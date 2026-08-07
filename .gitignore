@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+dist/
+
+# Rust
+target/
+src-tauri/target/
+
+# Tauri generated
+src-tauri/gen/schemas
+
+# Logs / misc
+*.log
+.DS_Store
+
+# Reference mirror (read-only upstream, do not commit)
+ref/
+
+# Backup files
+*.bak

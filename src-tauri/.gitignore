@@ -1,0 +1,7 @@
+node_modules
+dist
+*.log
+
+# Rust
+target/
+src-tauri/gen/schemas

@@ -1,0 +1,20 @@
+{
+  "id": "frieren",
+  "name": "Frieren",
+  "resourceDir": "assets/pets/frieren",
+  "width": 736,
+  "height": 736,
+  "defaultState": "sleep",
+  "states": {
+    "sleep": {
+      "src": "sleep.gif",
+      "loop": true
+    },
+    "click": {
+      "src": "sleep.gif",
+      "loop": false,
+      "durationMs": 800,
+      "next": "sleep"
+    }
+  }
+}
