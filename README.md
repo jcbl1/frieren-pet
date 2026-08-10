@@ -4,12 +4,38 @@
 
 - **Tauri 2 + Vue 3 + TypeScript**
 - 透明 / 无边框 / 置顶 / 跳过任务栏窗口
-- 鼠标按住拖动
-- **Shift + 右键拖动** 缩放
-- 系统托盘：左键切换显示隐藏，菜单含 显示 / 隐藏 / 退出
+- 鼠标按住拖动，**Shift + 右键拖动** 缩放（以几何中心为基准）
+- 独立设置窗口（托盘「设置」/ 二次启动自动打开）
+- 配置持久化（Pinia + `@tauri-store/pinia`，自动落盘 + 跨窗口同步）
+- 记住窗口位置（拖到哪，下次启动回到哪）
+- 系统托盘：左键切换显示隐藏，菜单含 设置 / 显示 / 隐藏 / 退出
 - 精灵（GIF）状态机：`sleep` / `click`，素材为 `frieren_sleeping`（睡觉 GIF）
 - 关闭窗口仅隐藏，托盘常驻
 - 跨平台：macOS / Windows / Linux(X11)
+
+## 设置与持久化
+
+设置项定义在 `src/stores/pet.ts`（Pinia option store）：
+
+| 字段 | 默认 | 说明 |
+|------|------|------|
+| `scale` | 60 | 窗口缩放（20–150），Shift+右键或设置窗可调 |
+| `alwaysOnTop` | true | 始终置顶 |
+| `opacity` | 100 | 透明度（10–100） |
+| `passThrough` | false | 鼠标穿透 |
+| `x` / `y` | null | 窗口位置（屏幕物理像素），null 表示从未保存 |
+
+- 持久化走 `@tauri-store/pinia`（`saveOnChange`）+ Rust 侧 `tauri-plugin-pinia`，
+  改动自动写盘、跨窗口实时同步；设置窗与主窗共用同一份状态。
+- 位置捕获在 **main 窗口** 内完成：400ms 轮询 `outerPosition/outerSize` +
+  关窗（close-requested）时再存一次。macOS NSPanel 不派发 `onMoved`，
+  原生拖拽会吞掉 mouseup，因此不能依赖事件，只能主动轮询。
+- 启动时恢复已保存的 `x/y`（`availableMonitors` 校验是否在可见屏幕内，
+  屏外则跳过恢复回到居中），并一次性恢复 scale。
+- 缩放以几何中心为锚：几何中心存于 JS 模块态（`usePet.ts` 的 `center`），
+  每次 resize 固定 `setPosition(center − target/2)`。macOS 上 `setSize/setPosition`
+  为 GCD 异步派发，若逐次读窗口 frame 做中心保持会因时序不一致累积漂移，
+  钉住 JS 侧 center 可结构性消除漂移。
 
 参考镜像（只读，勿提交）位于 `ref/BongoCat/`。macOS 上桌面浮层使用
 `tauri-nspanel`（v2.1，源码 vendored 于 `vendor/tauri-nspanel/`，
@@ -114,23 +140,27 @@ core/
 ├── Cargo.toml              # workspace → src-tauri
 ├── vendor/tauri-nspanel/   # macOS 桌面浮层库（vendored）
 ├── src/                    # Vue3 前端
+│   ├── main.ts             #   createApp + pinia(+tauri-store) + router
+│   ├── App.vue             #   RouterView + store 启动 + 窗体样式分支
+│   ├── router/             #   hash 路由：#/（主窗）、#/preference（设置窗）
 │   ├── pages/main/         #   桌宠主窗口
-│   ├── composables/usePet  #   状态机 + 资源解析 + 窗口缩放
-│   ├── stores/pet          #   窗口偏好（scale/透明度）
+│   ├── pages/preference/   #   设置窗口（缩放/透明度/置顶/穿透/关于）
+│   ├── composables/usePet  #   状态机 + 资源解析 + 中心缩放 + 位置捕获
+│   ├── stores/pet          #   Pinia 配置 store（持久化）
 │   └── assets/pets/        #   pet.json 状态协议
 └── src-tauri/
-    ├── tauri.conf.json     # 窗口/资源/打包配置
+    ├── tauri.conf.json     # 窗口/资源/打包配置（main + preference 双窗）
     ├── tauri.*.conf.json   # 各平台覆盖
-    ├── capabilities/       # 前端权限
+    ├── capabilities/       # 前端权限（含 pinia、outer-position/size）
     ├── assets/pets/        # GIF 素材（asset protocol 提供）
     └── src/
-        ├── lib.rs          # 应用入口、单实例、关窗隐藏
-        └── setup/          # 托盘、macOS panel
+        ├── lib.rs          # 应用入口、单实例（二次启动→设置窗）、关窗隐藏
+        └── setup/          # 托盘（设置/显示/隐藏/退出）、macOS panel
 ```
 
 ## 后续可扩展
 
-- 点击穿透、跟随光标
+- 跟随光标
 - 全局键鼠/手柄驱动动作（BongoCat 的 `rdev`/`gilrs`）
 - Live2D 渲染后端（保留 `usePet` 接口，可替换）
-- 多角色、设置页
+- 多角色
