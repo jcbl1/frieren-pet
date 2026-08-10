@@ -11,6 +11,7 @@ pnpm dev                # Vite only — no Tauri APIs / window
 pnpm typecheck          # vue-tsc --noEmit (no lint / no tests)
 pnpm build              # frontend → dist/
 pnpm tauri build        # native bundle (must run on target OS)
+cargo check -p frieren-pet   # after Rust edits (prefer -p; bare `cargo check` may pull macOS-only tauri-nspanel on Linux)
 ```
 
 - Package manager is **pnpm** (`tauri.conf.json` `beforeDevCommand` / `beforeBuildCommand` call `pnpm`).
@@ -46,7 +47,8 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 
 ## Persistence / settings
 
-- Config lives in `src/stores/pet.ts` (Pinia option store: `scale` / `alwaysOnTop` / `opacity` / `passThrough` / `x?` / `y?`). Persisted with `@tauri-store/pinia` (`saveOnChange`) + `tauri-plugin-pinia` (Rust), auto-synced across windows.
+- Config lives in `src/stores/pet.ts` (Pinia option store: `scale` / `alwaysOnTop` / `opacity` / `passThrough` / `x` / `y`). Persisted with `@tauri-store/pinia` (`saveOnChange`) + `tauri-plugin-pinia` (Rust), auto-synced across windows.
+- **Every persisted field MUST be in the initial `state()`** (use `null` for optional). Assigning a new key on an option store only sets a local proxy property — it never enters `$state`, so `@tauri-store/pinia` never patches/saves it.
 - Both windows call `petStore.$tauri.start()` in `App.vue` `onMounted` (guarded by `__TAURI_INTERNALS__` for `pnpm dev`); main page re-awaits it in its own `onMounted` before the first `resizeWindow()` so saved position/scale restore deterministically.
 - Window side-effects only run on **main**: `usePet()` registers `alwaysOnTop`/`passThrough` watchers + `scale` resize + position capture (400ms poll of `outerPosition`/`outerSize` + save on close-requested; macOS NSPanel does NOT deliver `onMoved`, so do not rely on it). Do NOT call these in the preference window (separate bundle entry via hash route).
 - `resizeWindow()` in `usePet.ts`: coalesced single-flight (concurrent calls are serialized, latest target wins). The geometric **center** is tracked in JS module state (`center`), updated only by restore/init or the poll of a settled frame (never read during a resize — `resizing` gate), and every resize pins `setPosition(center − target/2)` so macOS's async `setSize`/`setPosition` (GCD-dispatched) cannot accumulate drift. First run restores saved `x/y` once (guarded by `availableMonitors` on-screen check). Needs `core:window:allow-outer-position` / `allow-outer-size` in capabilities.
@@ -57,7 +59,7 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 
 - Drag uses **`appWindow.startDragging()`** after a small move threshold — not custom `setPosition`. Custom drag + `@mouseleave` caused grip loss and blue selection chrome on macOS.
 - Keep `mousedown` `preventDefault` and global `user-select: none` (see `main.css`) to suppress WKWebView blue rectangles.
-- Window label is always `"main"`.
+- Window labels: `"main"` (pet) and `"preference"` (settings). macOS NSPanel conversion applies **only** to `main`.
 - Close is intercepted → hide; tray stays alive. Tray init failure must not abort startup.
 - Shift + right-drag scales via `petStore.scale` (20–150).
 
@@ -78,4 +80,4 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 - Prefer matching existing patterns over BongoCat wholesale copies; when porting behavior, check `ref/BongoCat/` first but keep this app minimal.
 - Do not commit `ref/`, `*.bak`, `node_modules/`, `dist/`, `target/`, or `src-tauri/gen/schemas`.
 - Do not add comments unless asked.
-- After TS/Vue edits: `pnpm typecheck`. After Rust edits: `cargo check` in workspace (macOS-only code is cfg-gated and won’t compile on Linux).
+- After TS/Vue edits: `pnpm typecheck`. After Rust edits: `cargo check -p frieren-pet` (macOS-only code is cfg-gated and won’t compile on Linux).
