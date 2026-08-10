@@ -46,9 +46,10 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 
 ## Persistence / settings
 
-- Config lives in `src/stores/pet.ts` (Pinia setup store: `scale` / `alwaysOnTop` / `opacity` / `passThrough`). Persisted with `@tauri-store/pinia` (`saveOnChange`) + `tauri-plugin-pinia` (Rust), auto-synced across windows.
-- Both windows call `petStore.$tauri.start()` in `App.vue` `onMounted` (guarded by `__TAURI_INTERNALS__` for `pnpm dev`).
-- Window side-effects only run on **main**: `usePet()` registers `alwaysOnTop`/`passThrough` watchers + `scale` resize. Do NOT call these in the preference window (separate bundle entry via hash route).
+- Config lives in `src/stores/pet.ts` (Pinia option store: `scale` / `alwaysOnTop` / `opacity` / `passThrough` / `x?` / `y?`). Persisted with `@tauri-store/pinia` (`saveOnChange`) + `tauri-plugin-pinia` (Rust), auto-synced across windows.
+- Both windows call `petStore.$tauri.start()` in `App.vue` `onMounted` (guarded by `__TAURI_INTERNALS__` for `pnpm dev`); main page re-awaits it in its own `onMounted` before the first `resizeWindow()` so saved position/scale restore deterministically.
+- Window side-effects only run on **main**: `usePet()` registers `alwaysOnTop`/`passThrough` watchers + `scale` resize + position capture (400ms poll of `outerPosition`/`outerSize` + save on close-requested; macOS NSPanel does NOT deliver `onMoved`, so do not rely on it). Do NOT call these in the preference window (separate bundle entry via hash route).
+- `resizeWindow()` in `usePet.ts`: coalesced single-flight (concurrent calls are serialized, latest target wins). The geometric **center** is tracked in JS module state (`center`), updated only by restore/init or the poll of a settled frame (never read during a resize — `resizing` gate), and every resize pins `setPosition(center − target/2)` so macOS's async `setSize`/`setPosition` (GCD-dispatched) cannot accumulate drift. First run restores saved `x/y` once (guarded by `availableMonitors` on-screen check). Needs `core:window:allow-outer-position` / `allow-outer-size` in capabilities.
 - Tray "设置" shows the `preference` window; single-instance second launch also shows it.
 - `src/pages/preference/index.vue` uses lightweight native CSS — no component library. `main.css` opts the preference body out of transparent/no-select defaults via `body.preference`.
 

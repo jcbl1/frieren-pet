@@ -2,7 +2,7 @@
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { onMounted } from 'vue'
 
-import { resizeWindow, setState, usePet, wake } from '@/composables/usePet'
+import { resizeWindow, saveCurrentPosition, setState, usePet, wake } from '@/composables/usePet'
 import { usePetStore } from '@/stores/pet'
 
 const appWindow = getCurrentWebviewWindow()
@@ -22,6 +22,7 @@ const dragState = {
 }
 
 onMounted(async () => {
+  await petStore.$tauri.start()
   await setState('sleep')
   await resizeWindow()
   wake()
@@ -64,7 +65,12 @@ function handleMouseMove(event: MouseEvent) {
 }
 
 function handleMouseUp() {
+  if (dragState.dragging) {
+    saveCurrentPosition()
+  }
+
   dragState.active = false
+  dragState.dragging = false
 }
 
 function handleClick() {

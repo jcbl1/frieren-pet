@@ -5,6 +5,8 @@ export interface PetStoreState {
   alwaysOnTop: boolean
   opacity: number
   passThrough: boolean
+  x: number | null
+  y: number | null
 }
 
 export const usePetStore = defineStore('pet', {
@@ -13,5 +15,7 @@ export const usePetStore = defineStore('pet', {
     alwaysOnTop: true,
     opacity: 100,
     passThrough: false,
+    x: null,
+    y: null,
   }),
 })
