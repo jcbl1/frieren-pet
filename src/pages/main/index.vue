@@ -3,13 +3,14 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { onMounted } from 'vue'
 
 import { invoke, resizeWindow, saveCurrentPosition, start, usePet, wake } from '@/composables/usePet'
+import PetViewport from '@/components/PetViewport.vue'
 import { usePetStore } from '@/stores/pet'
 
 const appWindow = getCurrentWebviewWindow()
 
 const petStore = usePetStore()
 
-const { currentSrc } = usePet()
+const { config, currentState, currentSrc } = usePet()
 
 const DRAG_THRESHOLD = 4
 
@@ -103,7 +104,7 @@ function handleClick() {
     @mouseenter="wake"
     @contextmenu.prevent
   >
-    <img class="pet-image" :src="currentSrc" draggable="false" alt="frieren">
+    <PetViewport :config="config" :state="currentState" :src="currentSrc" />
   </div>
 </template>
 
@@ -116,12 +117,5 @@ function handleClick() {
   user-select: none;
   -webkit-user-drag: none;
   -webkit-tap-highlight-color: transparent;
-}
-
-.pet-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
 }
 </style>

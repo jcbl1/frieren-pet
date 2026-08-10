@@ -14,11 +14,11 @@ export type PetState = string
 const IDLE_SLEEP_DELAY = 60_000
 const DEFAULT_PET_ID = 'frieren'
 
-let petConfig: PetConfig | null = null
 let petConfigPromise: Promise<PetConfig> | null = null
 
 const currentState = ref<PetState>('')
 const currentSrc = ref<string>('')
+const petConfigRef = ref<PetConfig | null>(null)
 
 let idleTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -40,12 +40,13 @@ async function loadDefaultPetConfig() {
 
 function ensurePetConfig(): Promise<PetConfig> {
   const id = getCurrentPetId()
+  const current = petConfigRef.value
 
-  if (petConfig?.id === id) return Promise.resolve(petConfig)
+  if (current?.id === id) return Promise.resolve(current)
 
   if (petConfigPromise) return petConfigPromise
 
-  petConfig = null
+  petConfigRef.value = null
   petConfigPromise = loadPetConfig(id)
     .catch((error) => {
       console.error(`[frieren-pet] load pet "${id}" failed:`, error)
@@ -53,7 +54,7 @@ function ensurePetConfig(): Promise<PetConfig> {
       return loadDefaultPetConfig()
     })
     .then((config) => {
-      petConfig = config
+      petConfigRef.value = config
       petConfigPromise = null
 
       return config
@@ -109,7 +110,7 @@ export async function reloadPet() {
   reloading = true
 
   try {
-    petConfig = null
+    petConfigRef.value = null
     petConfigPromise = null
 
     const config = await ensurePetConfig()
@@ -336,6 +337,7 @@ export function usePet() {
   })
 
   return {
+    config: computed(() => petConfigRef.value),
     currentState,
     currentSrc: computed(() => currentSrc.value),
     start,
