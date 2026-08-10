@@ -12,6 +12,7 @@ use tauri::{
 };
 
 const MAIN_WINDOW_LABEL: &str = "main";
+const PREFERENCE_WINDOW_LABEL: &str = "preference";
 
 #[cfg(target_os = "macos")]
 const TRAY_ICON: &[u8] = include_bytes!("../../assets/tray-mac.png");
@@ -34,11 +35,12 @@ pub fn default(app: &App<Wry>) -> tauri::Result<()> {
 }
 
 fn setup_tray(app: &App<Wry>) -> tauri::Result<()> {
+    let settings = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
     let show = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
     let hide = MenuItem::with_id(app, "hide", "隐藏", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
 
-    let menu = Menu::with_items(app, &[&show, &hide, &quit])?;
+    let menu = Menu::with_items(app, &[&settings, &show, &hide, &quit])?;
 
     let icon = Image::from_bytes(TRAY_ICON)?;
 
@@ -69,6 +71,12 @@ fn setup_tray(app: &App<Wry>) -> tauri::Result<()> {
             }
         })
         .on_menu_event(|app, event| match event.id().as_ref() {
+            "settings" => {
+                if let Some(window) = app.get_webview_window(PREFERENCE_WINDOW_LABEL) {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
             "show" => {
                 if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
                     let _ = window.show();

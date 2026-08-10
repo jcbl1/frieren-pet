@@ -12,7 +12,10 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
-    "vue": "^3.5.13"
+    "@tauri-store/pinia": "^3.7.1",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.13",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.5.0",
@@ -23,8 +26,17 @@
   },
   "pnpm": {
     "supportedArchitectures": {
-      "os": ["current", "darwin", "linux", "win32"],
-      "cpu": ["current", "arm64", "x64"]
+      "os": [
+        "current",
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "cpu": [
+        "current",
+        "arm64",
+        "x64"
+      ]
     }
   }
 }

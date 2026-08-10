@@ -7,6 +7,7 @@ body,
   padding: 0;
   overflow: hidden;
   background: transparent;
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   -webkit-user-select: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -20,4 +21,14 @@ body,
 
 ::selection {
   background: transparent;
+}
+
+body.preference {
+  background: #fafafa;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+body.preference ::selection {
+  background: #cfe0cf;
 }

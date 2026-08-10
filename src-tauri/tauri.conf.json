@@ -15,7 +15,7 @@
       {
         "label": "main",
         "title": "Frieren Pet",
-        "url": "index.html",
+        "url": "index.html#/",
         "transparent": true,
         "decorations": false,
         "alwaysOnTop": true,
@@ -26,6 +26,17 @@
         "maximizable": false,
         "width": 442,
         "height": 442,
+        "center": true
+      },
+      {
+        "label": "preference",
+        "title": "设置",
+        "url": "index.html#/preference",
+        "visible": false,
+        "width": 520,
+        "height": 560,
+        "minWidth": 460,
+        "minHeight": 480,
         "center": true
       }
     ],

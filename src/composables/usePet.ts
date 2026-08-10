@@ -5,7 +5,7 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { computed, ref, watch } from 'vue'
 
 import petConfigRaw from '@/assets/pets/frieren/pet.json'
-import { petStore } from '@/stores/pet'
+import { usePetStore } from '@/stores/pet'
 
 export interface PetStateConfig {
   src: string
@@ -27,8 +27,6 @@ export interface PetConfig {
 const petConfig = petConfigRaw as PetConfig
 
 export type PetState = keyof typeof petConfigRaw.states
-
-const appWindow = getCurrentWebviewWindow()
 
 const IDLE_SLEEP_DELAY = 60_000
 
@@ -84,9 +82,10 @@ export function wake() {
 }
 
 export async function resizeWindow() {
+  const petStore = usePetStore()
   const scale = petStore.scale / 100
 
-  await appWindow.setSize(
+  await getCurrentWebviewWindow().setSize(
     new PhysicalSize({
       width: Math.round(petConfig.width * scale),
       height: Math.round(petConfig.height * scale),
@@ -95,7 +94,26 @@ export async function resizeWindow() {
 }
 
 export function usePet() {
+  const petStore = usePetStore()
+  const appWindow = getCurrentWebviewWindow()
+
   watch(() => petStore.scale, resizeWindow)
+
+  watch(
+    () => petStore.alwaysOnTop,
+    (value) => {
+      void appWindow.setAlwaysOnTop(value)
+    },
+    { immediate: true },
+  )
+
+  watch(
+    () => petStore.passThrough,
+    (value) => {
+      void appWindow.setIgnoreCursorEvents(value)
+    },
+    { immediate: true },
+  )
 
   return {
     currentState,

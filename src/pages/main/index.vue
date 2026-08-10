@@ -3,9 +3,11 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { onMounted } from 'vue'
 
 import { resizeWindow, setState, usePet, wake } from '@/composables/usePet'
-import { petStore } from '@/stores/pet'
+import { usePetStore } from '@/stores/pet'
 
 const appWindow = getCurrentWebviewWindow()
+
+const petStore = usePetStore()
 
 const { currentSrc } = usePet()
 

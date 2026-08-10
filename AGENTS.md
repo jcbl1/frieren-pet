@@ -23,10 +23,13 @@ pnpm tauri build        # native bundle (must run on target OS)
 |------|------|
 | `src/` | Vue frontend (`@/` → `src/`) |
 | `src/pages/main/index.vue` | Pet window UI: drag, click, scale |
+| `src/pages/preference/index.vue` | Settings window: scale/opacity/alwaysOnTop/passThrough/about |
+| `src/router/index.ts` | Hash router: `#/` (main) + `#/preference` (settings) |
+| `src/stores/pet.ts` | Pinia store, **persisted** via `@tauri-store/pinia` (`$tauri.start()` + `saveOnChange`) |
 | `src/composables/usePet.ts` | State machine + asset resolve + window resize |
 | `src/assets/pets/<id>/pet.json` | **Compiled into** frontend bundle (`import`) |
 | `src-tauri/assets/pets/<id>/` | GIF/PNG **runtime** resources (`resolveResource` + asset protocol) |
-| `src-tauri/src/lib.rs` | App entry, single-instance, close→hide |
+| `src-tauri/src/lib.rs` | App entry, single-instance (2nd launch → settings), close→hide |
 | `src-tauri/src/setup/` | Tray + platform setup (`macos.rs` / `common.rs`) |
 | `vendor/tauri-nspanel/` | macOS-only path dep (do not fetch from GitHub) |
 | `ref/` | Upstream mirror — **never commit** |
@@ -40,6 +43,14 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 - `resourceDir` in pet.json is relative to Tauri resources (e.g. `assets/pets/frieren`), not the Vue `src/` tree.
 - UI hardcodes state names: `setState('sleep')` / `setState('click')` in `index.vue`; idle timer also targets `'sleep'` in `usePet.ts`. Renaming states in JSON without updating those call sites breaks typecheck or silently no-ops.
 - Current pet uses only `sleep.gif` (`defaultState: "sleep"`). `idle.gif` / `fallback.png` are unused leftovers.
+
+## Persistence / settings
+
+- Config lives in `src/stores/pet.ts` (Pinia setup store: `scale` / `alwaysOnTop` / `opacity` / `passThrough`). Persisted with `@tauri-store/pinia` (`saveOnChange`) + `tauri-plugin-pinia` (Rust), auto-synced across windows.
+- Both windows call `petStore.$tauri.start()` in `App.vue` `onMounted` (guarded by `__TAURI_INTERNALS__` for `pnpm dev`).
+- Window side-effects only run on **main**: `usePet()` registers `alwaysOnTop`/`passThrough` watchers + `scale` resize. Do NOT call these in the preference window (separate bundle entry via hash route).
+- Tray "设置" shows the `preference` window; single-instance second launch also shows it.
+- `src/pages/preference/index.vue` uses lightweight native CSS — no component library. `main.css` opts the preference body out of transparent/no-select defaults via `body.preference`.
 
 ## Window / input (do not regress)
 
