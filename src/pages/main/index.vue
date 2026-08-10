@@ -23,8 +23,14 @@ const dragState = {
 
 onMounted(async () => {
   await petStore.$tauri.start()
-  await setState('sleep')
-  await resizeWindow()
+
+  try {
+    await setState('sleep')
+    await resizeWindow()
+  } catch (error) {
+    console.error('[frieren-pet] pet init failed:', error)
+  }
+
   wake()
 })
 

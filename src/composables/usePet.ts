@@ -5,81 +5,91 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { availableMonitors } from '@tauri-apps/api/window'
 import { computed, ref, watch } from 'vue'
 
-import petConfigRaw from '@/assets/pets/frieren/pet.json'
+import { loadPetConfig, loadPresetPetIds } from '@/services/petConfig'
 import { usePetStore } from '@/stores/pet'
+import type { PetConfig } from '@/types/pet'
 
-export interface PetStateConfig {
-  src: string
-  loop: boolean
-  durationMs?: number
-  next?: string
-}
-
-export interface PetConfig {
-  id: string
-  name: string
-  resourceDir: string
-  width: number
-  height: number
-  defaultState: string
-  states: Record<string, PetStateConfig>
-}
-
-const petConfig = petConfigRaw as PetConfig
-
-export type PetState = keyof typeof petConfigRaw.states
+export type PetState = string
 
 const IDLE_SLEEP_DELAY = 60_000
 
-const currentState = ref<PetState>(petConfig.defaultState as PetState)
+let petConfig: PetConfig | null = null
+let petConfigPromise: Promise<PetConfig> | null = null
+
+const currentState = ref<PetState>('')
 const currentSrc = ref<string>('')
 
 let idleTimer: ReturnType<typeof setTimeout> | undefined
 
+async function loadDefaultPetConfig() {
+  const presetIds = await loadPresetPetIds()
+
+  return loadPetConfig(presetIds[0] ?? 'frieren')
+}
+
+function ensurePetConfig(): Promise<PetConfig> {
+  if (petConfig) return Promise.resolve(petConfig)
+
+  if (!petConfigPromise) {
+    petConfigPromise = loadDefaultPetConfig().then((config) => {
+      petConfig = config
+
+      return config
+    })
+  }
+
+  return petConfigPromise
+}
+
 async function resolveStateSrc(src: string) {
-  const path = await resolveResource(`${petConfig.resourceDir}/${src}`)
+  const config = await ensurePetConfig()
+  const path = await resolveResource(`${config.resourceDir}/${src}`)
 
   return convertFileSrc(path)
 }
 
-function scheduleStateTransition(state: PetState) {
-  const config = petConfig.states[state]
+async function scheduleStateTransition(state: PetState) {
+  const config = await ensurePetConfig()
+  const stateConfig = config.states[state]
 
-  if (!config || !config.durationMs) return
+  if (!stateConfig || !stateConfig.durationMs) return
 
   setTimeout(() => {
     if (currentState.value !== state) return
 
-    void setState((config.next ?? petConfig.defaultState) as PetState)
-  }, config.durationMs)
+    void setState((stateConfig.next ?? config.defaultState) as PetState)
+  }, stateConfig.durationMs)
 }
 
 export async function setState(state: PetState) {
-  const config = petConfig.states[state]
+  const config = await ensurePetConfig()
+  const stateConfig = config.states[state]
 
-  if (!config) return
+  if (!stateConfig) return
 
   currentState.value = state
 
-  currentSrc.value = await resolveStateSrc(config.src)
+  currentSrc.value = await resolveStateSrc(stateConfig.src)
 
-  scheduleStateTransition(state)
+  await scheduleStateTransition(state)
 }
 
-function resetIdleTimer() {
+async function resetIdleTimer() {
+  const config = await ensurePetConfig()
+
+  if (!config.states.sleep) return
+
   if (idleTimer) {
     clearTimeout(idleTimer)
   }
 
   idleTimer = setTimeout(() => {
-    if (petConfig.states.sleep) {
-      void setState('sleep')
-    }
+    void setState('sleep')
   }, IDLE_SLEEP_DELAY)
 }
 
 export function wake() {
-  resetIdleTimer()
+  void resetIdleTimer()
 }
 
 let positionRestored = false
@@ -142,13 +152,14 @@ async function isPositionOnScreen(x: number, y: number) {
 }
 
 async function doResize() {
+  const config = await ensurePetConfig()
   const petStore = usePetStore()
   const appWindow = getCurrentWebviewWindow()
   const scale = petStore.scale / 100
 
   const target = new PhysicalSize({
-    width: Math.round(petConfig.width * scale),
-    height: Math.round(petConfig.height * scale),
+    width: Math.round(config.width * scale),
+    height: Math.round(config.height * scale),
   })
 
   const savedX = petStore.x

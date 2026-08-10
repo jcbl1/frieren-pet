@@ -28,8 +28,10 @@ cargo check -p frieren-pet   # after Rust edits (prefer -p; bare `cargo check` m
 | `src/router/index.ts` | Hash router: `#/` (main) + `#/preference` (settings) |
 | `src/stores/pet.ts` | Pinia store, **persisted** via `@tauri-store/pinia` (`$tauri.start()` + `saveOnChange`) |
 | `src/composables/usePet.ts` | State machine + asset resolve + window resize |
-| `src/assets/pets/<id>/pet.json` | **Compiled into** frontend bundle (`import`) |
-| `src-tauri/assets/pets/<id>/` | GIF/PNG **runtime** resources (`resolveResource` + asset protocol) |
+| `src/types/pet.ts` | `PetConfig` / `PetStateConfig` / `PetCapabilities` / `PetFormat` (v1 协议) |
+| `src/services/petConfig.ts` | **Runtime** loader: `loadPresetPetIds()` (manifest) + `loadPetConfig(id)` |
+| `src-tauri/assets/pets/<id>/` | `pet.json` + GIF/PNG resources (`resolveResource` + asset protocol) |
+| `src-tauri/assets/pets/manifest.json` | `presets` 内置角色 id 列表（运行时读取） |
 | `src-tauri/src/lib.rs` | App entry, single-instance (2nd launch → settings), close→hide |
 | `src-tauri/src/setup/` | Tray + platform setup (`macos.rs` / `common.rs`) |
 | `vendor/tauri-nspanel/` | macOS-only path dep (do not fetch from GitHub) |
@@ -39,8 +41,9 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 
 ## Asset / state coupling (easy to break)
 
-- GIFs live under `src-tauri/assets/…` and are listed in `bundle.resources`.
-- `pet.json` lives under `src/assets/…` and is **imported at build time** — changing it requires a frontend rebuild; it is not loaded at runtime from disk.
+- GIFs and `pet.json` live under `src-tauri/assets/…` and are listed in `bundle.resources`.
+- `src-tauri/build.rs` emits `cargo:rerun-if-changed=assets`, so ANY add/change/remove under `src-tauri/assets/` triggers a cargo rebuild that re-copies resources into the dev resource dir (`target/<triple>/debug/assets`). Without it, newly added files under the `assets/pets/**/*` glob are silently never copied (tauri-build only watches files that existed at build time).
+- `pet.json` is loaded **at runtime** by `src/services/petConfig.ts` (`resolveResource` → asset-protocol `fetch`). Built-in ids come from `assets/pets/manifest.json`; changing JSON does NOT need a frontend rebuild, but DOES require a rebuild/re-run of the Tauri bundle for packaged apps.
 - `resourceDir` in pet.json is relative to Tauri resources (e.g. `assets/pets/frieren`), not the Vue `src/` tree.
 - UI hardcodes state names: `setState('sleep')` / `setState('click')` in `index.vue`; idle timer also targets `'sleep'` in `usePet.ts`. Renaming states in JSON without updating those call sites breaks typecheck or silently no-ops.
 - Current pet uses only `sleep.gif` (`defaultState: "sleep"`). `idle.gif` / `fallback.png` are unused leftovers.
