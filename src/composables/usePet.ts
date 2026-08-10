@@ -61,7 +61,7 @@ async function scheduleStateTransition(state: PetState) {
   }, stateConfig.durationMs)
 }
 
-export async function setState(state: PetState) {
+async function setState(state: PetState) {
   const config = await ensurePetConfig()
   const stateConfig = config.states[state]
 
@@ -74,22 +74,33 @@ export async function setState(state: PetState) {
   await scheduleStateTransition(state)
 }
 
-async function resetIdleTimer() {
+export async function start() {
   const config = await ensurePetConfig()
 
-  if (!config.states.sleep) return
+  await setState(config.defaultState)
+}
 
+export async function invoke(cap: string) {
+  const config = await ensurePetConfig()
+  const state = config.capabilities?.[cap]
+
+  if (!state || !config.states[state]) return
+
+  await setState(state)
+}
+
+function resetIdleTimer() {
   if (idleTimer) {
     clearTimeout(idleTimer)
   }
 
   idleTimer = setTimeout(() => {
-    void setState('sleep')
+    void invoke('idle')
   }, IDLE_SLEEP_DELAY)
 }
 
 export function wake() {
-  void resetIdleTimer()
+  resetIdleTimer()
 }
 
 let positionRestored = false
@@ -276,7 +287,8 @@ export function usePet() {
   return {
     currentState,
     currentSrc: computed(() => currentSrc.value),
-    setState,
+    start,
+    invoke,
     wake,
     resizeWindow,
   }
