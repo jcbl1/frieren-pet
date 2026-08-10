@@ -12,6 +12,7 @@ import type { PetConfig } from '@/types/pet'
 export type PetState = string
 
 const IDLE_SLEEP_DELAY = 60_000
+const DEFAULT_PET_ID = 'frieren'
 
 let petConfig: PetConfig | null = null
 let petConfigPromise: Promise<PetConfig> | null = null
@@ -21,22 +22,42 @@ const currentSrc = ref<string>('')
 
 let idleTimer: ReturnType<typeof setTimeout> | undefined
 
+function getCurrentPetId() {
+  const petStore = usePetStore()
+
+  return petStore.currentPetId ?? DEFAULT_PET_ID
+}
+
 async function loadDefaultPetConfig() {
   const presetIds = await loadPresetPetIds()
+  const id = presetIds[0] ?? DEFAULT_PET_ID
+  const petStore = usePetStore()
 
-  return loadPetConfig(presetIds[0] ?? 'frieren')
+  if (petStore.currentPetId !== id) petStore.currentPetId = id
+
+  return loadPetConfig(id)
 }
 
 function ensurePetConfig(): Promise<PetConfig> {
-  if (petConfig) return Promise.resolve(petConfig)
+  const id = getCurrentPetId()
 
-  if (!petConfigPromise) {
-    petConfigPromise = loadDefaultPetConfig().then((config) => {
+  if (petConfig?.id === id) return Promise.resolve(petConfig)
+
+  if (petConfigPromise) return petConfigPromise
+
+  petConfig = null
+  petConfigPromise = loadPetConfig(id)
+    .catch((error) => {
+      console.error(`[frieren-pet] load pet "${id}" failed:`, error)
+
+      return loadDefaultPetConfig()
+    })
+    .then((config) => {
       petConfig = config
+      petConfigPromise = null
 
       return config
     })
-  }
 
   return petConfigPromise
 }
@@ -78,6 +99,27 @@ export async function start() {
   const config = await ensurePetConfig()
 
   await setState(config.defaultState)
+}
+
+let reloading = false
+
+export async function reloadPet() {
+  if (reloading) return
+
+  reloading = true
+
+  try {
+    petConfig = null
+    petConfigPromise = null
+
+    const config = await ensurePetConfig()
+
+    await setState(config.defaultState)
+    await resizeWindow()
+    wake()
+  } finally {
+    reloading = false
+  }
 }
 
 export async function invoke(cap: string) {
@@ -256,6 +298,15 @@ export function usePet() {
   const petStore = usePetStore()
   const appWindow = getCurrentWebviewWindow()
 
+  watch(
+    () => petStore.currentPetId,
+    (id) => {
+      if (!id) return
+
+      void reloadPet()
+    },
+  )
+
   watch(() => petStore.scale, resizeWindow)
 
   watch(
@@ -288,6 +339,7 @@ export function usePet() {
     currentState,
     currentSrc: computed(() => currentSrc.value),
     start,
+    reloadPet,
     invoke,
     wake,
     resizeWindow,

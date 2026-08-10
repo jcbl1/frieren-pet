@@ -3,19 +3,30 @@ import { getName, getVersion } from '@tauri-apps/api/app'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { onMounted, ref } from 'vue'
 
+import { loadPetCatalog } from '@/services/petCatalog'
+import type { PetEntry } from '@/services/petCatalog'
 import { usePetStore } from '@/stores/pet'
 
 const petStore = usePetStore()
 
 const appName = ref('')
 const appVersion = ref('')
+const pets = ref<PetEntry[]>([])
+const petLoading = ref(true)
 
 onMounted(async () => {
   const [name, version] = await Promise.all([getName(), getVersion()])
 
   appName.value = name
   appVersion.value = version
+
+  pets.value = await loadPetCatalog()
+  petLoading.value = false
 })
+
+function selectPet(id: string) {
+  petStore.currentPetId = id
+}
 
 function close() {
   void getCurrentWebviewWindow().close()
@@ -31,6 +42,31 @@ function close() {
     </header>
 
     <main class="content">
+      <section class="group">
+        <h2 class="group-title">角色</h2>
+
+        <div v-if="petLoading" class="pet-grid">
+          <div class="pet-card pet-card--placeholder">加载中…</div>
+        </div>
+
+        <div v-else class="pet-grid">
+          <button
+            v-for="pet in pets"
+            :key="pet.id"
+            class="pet-card"
+            :class="{ active: petStore.currentPetId === pet.id }"
+            type="button"
+            @click="selectPet(pet.id)"
+          >
+            <img v-if="pet.previewUrl" class="pet-preview" :src="pet.previewUrl" alt="">
+
+            <span class="pet-name">{{ pet.name }}</span>
+
+            <span v-if="!pet.isPreset" class="pet-badge">导入</span>
+          </button>
+        </div>
+      </section>
+
       <section class="group">
         <h2 class="group-title">窗口</h2>
 
@@ -265,5 +301,65 @@ function close() {
 
 .row.static {
   justify-content: space-between;
+}
+
+.pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 12px;
+}
+
+.pet-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pet-card:hover {
+  border-color: #b8ccb8;
+}
+
+.pet-card.active {
+  border-color: #7c9a7c;
+  box-shadow: 0 0 0 1px #7c9a7c;
+}
+
+.pet-card--placeholder {
+  justify-content: center;
+  color: #8a8a8a;
+  font-size: 12px;
+  cursor: default;
+}
+
+.pet-preview {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.pet-name {
+  font-size: 12px;
+  color: #2d2d2d;
+  text-align: center;
+}
+
+.pet-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #7c9a7c;
+  color: #ffffff;
+  font-size: 10px;
 }
 </style>

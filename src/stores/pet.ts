@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
 export interface PetStoreState {
+  currentPetId: string | null
   scale: number
   alwaysOnTop: boolean
   opacity: number
@@ -11,6 +12,7 @@ export interface PetStoreState {
 
 export const usePetStore = defineStore('pet', {
   state: (): PetStoreState => ({
+    currentPetId: 'frieren',
     scale: 60,
     alwaysOnTop: true,
     opacity: 100,
