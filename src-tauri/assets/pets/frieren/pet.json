@@ -2,7 +2,6 @@
   "id": "frieren",
   "name": "Frieren",
   "format": "gif",
-  "resourceDir": "assets/pets/frieren",
   "width": 736,
   "height": 736,
   "defaultState": "sleep",

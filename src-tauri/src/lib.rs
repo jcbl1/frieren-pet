@@ -1,6 +1,9 @@
 mod setup;
+mod utils;
 
 use tauri::Manager;
+
+use utils::pet_import::{delete_pet, import_pet};
 
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
@@ -15,7 +18,9 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![quit_app])
+        .invoke_handler(tauri::generate_handler![quit_app, import_pet, delete_pet])
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_pinia::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("preference") {

@@ -44,7 +44,7 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 - GIFs and `pet.json` live under `src-tauri/assets/…` and are listed in `bundle.resources`.
 - `src-tauri/build.rs` emits `cargo:rerun-if-changed=assets`, so ANY add/change/remove under `src-tauri/assets/` triggers a cargo rebuild that re-copies resources into the dev resource dir (`target/<triple>/debug/assets`). Without it, newly added files under the `assets/pets/**/*` glob are silently never copied (tauri-build only watches files that existed at build time).
 - `pet.json` is loaded **at runtime** by `src/services/petConfig.ts` (`resolveResource` → asset-protocol `fetch`). Built-in ids come from `assets/pets/manifest.json`; changing JSON does NOT need a frontend rebuild, but DOES require a rebuild/re-run of the Tauri bundle for packaged apps.
-- `resourceDir` in pet.json is relative to Tauri resources (e.g. `assets/pets/frieren`), not the Vue `src/` tree.
+- `resourceDir` is NOT stored in `pet.json`; the loader (`petConfig.ts`) injects it at runtime from the resolved root (`resolveResource` for presets, absolute `appDataDir/pets/<id>` for users). Never write `resourceDir` into a pet's `pet.json`.
 - UI sends **intents** only: `invoke('click')` in `index.vue`, idle timer calls `invoke('idle')`, initial load uses `start()` (`setState(config.defaultState)`) — all in `usePet.ts`. Intents map to per-pet state names via `capabilities` in pet.json; a missing capability/state is a silent no-op. State names are fully configurable per pet (a pet without `click` just ignores clicks).
 - Current pet uses only `sleep.gif` (`defaultState: "sleep"`). `idle.gif` / `fallback.png` are unused leftovers.
 
