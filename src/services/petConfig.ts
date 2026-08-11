@@ -72,9 +72,21 @@ export function validatePetConfig(raw: Partial<PetConfig>, rootDir: string, expe
     }
   }
 
-  for (const [cap, stateName] of Object.entries(config.capabilities ?? {})) {
-    if (!config.states[stateName]) {
-      throw new Error(`pet "${config.id}": capabilities[${cap}] 指向的状态 "${stateName}" 不存在`)
+  for (const [cap, target] of Object.entries(config.capabilities ?? {})) {
+    const stateName = typeof target === 'string' ? target : target?.state
+
+    if (!stateName || !config.states[stateName]) {
+      throw new Error(`pet "${config.id}": capabilities[${cap}] 指向的状态 "${String(stateName)}" 不存在`)
+    }
+
+    if (typeof target === 'object') {
+      if (target.cooldownMs != null && (!Number.isFinite(target.cooldownMs) || target.cooldownMs < 0)) {
+        throw new Error(`pet "${config.id}": capabilities[${cap}] 的 cooldownMs 不合法`)
+      }
+
+      if (target.afterMs != null && (!Number.isFinite(target.afterMs) || target.afterMs <= 0)) {
+        throw new Error(`pet "${config.id}": capabilities[${cap}] 的 afterMs 不合法`)
+      }
     }
   }
 

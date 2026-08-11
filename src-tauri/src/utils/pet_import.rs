@@ -41,6 +41,36 @@ struct PetStateConfigRaw {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct PetCapabilityRaw {
+    state: String,
+    #[serde(default)]
+    cooldown_ms: Option<u64>,
+    #[serde(default)]
+    after_ms: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum CapabilityTarget {
+    State(String),
+    Config(PetCapabilityRaw),
+}
+
+impl From<&str> for CapabilityTarget {
+    fn from(value: &str) -> Self {
+        CapabilityTarget::State(value.to_string())
+    }
+}
+
+fn capability_state(target: &CapabilityTarget) -> &str {
+    match target {
+        CapabilityTarget::State(state) => state,
+        CapabilityTarget::Config(config) => &config.state,
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PetConfigRaw {
     id: String,
     name: String,
@@ -51,7 +81,7 @@ struct PetConfigRaw {
     #[serde(default)]
     preview: Option<String>,
     #[serde(default)]
-    capabilities: HashMap<String, String>,
+    capabilities: HashMap<String, CapabilityTarget>,
     states: HashMap<String, PetStateConfigRaw>,
 }
 
@@ -122,7 +152,9 @@ fn validate_pet_config(config: &PetConfigRaw, from_dir: &Path) -> Result<(), Str
         }
     }
 
-    for (cap, state) in &config.capabilities {
+    for (cap, target) in &config.capabilities {
+        let state = capability_state(target);
+
         if !config.states.contains_key(state) {
             return Err(format!(
                 "capabilities[{cap}] 指向的状态 \"{state}\" 不存在"
@@ -382,6 +414,114 @@ mod tests {
         let result = validate_pet_config(&config, &from_dir);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn validation_accepts_object_capability() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("sleep.gif"), b"gif").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "gif".into(),
+            width: 100,
+            height: 100,
+            default_state: "sleep".into(),
+            preview: None,
+            capabilities: HashMap::from([(
+                "click".into(),
+                CapabilityTarget::Config(PetCapabilityRaw {
+                    state: "sleep".into(),
+                    cooldown_ms: Some(500),
+                    after_ms: None,
+                }),
+            )]),
+            states: HashMap::from([(
+                "sleep".into(),
+                PetStateConfigRaw {
+                    src: "sleep.gif".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        assert!(validate_pet_config(&config, &from_dir).is_ok());
+    }
+
+    #[test]
+    fn validation_rejects_object_capability_missing_state() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("sleep.gif"), b"gif").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "gif".into(),
+            width: 100,
+            height: 100,
+            default_state: "sleep".into(),
+            preview: None,
+            capabilities: HashMap::from([(
+                "click".into(),
+                CapabilityTarget::Config(PetCapabilityRaw {
+                    state: "nope".into(),
+                    cooldown_ms: None,
+                    after_ms: None,
+                }),
+            )]),
+            states: HashMap::from([(
+                "sleep".into(),
+                PetStateConfigRaw {
+                    src: "sleep.gif".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        let result = validate_pet_config(&config, &from_dir);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn config_roundtrip_serializes_object_capability() {
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "gif".into(),
+            width: 100,
+            height: 100,
+            default_state: "sleep".into(),
+            preview: None,
+            capabilities: HashMap::from([(
+                "click".into(),
+                CapabilityTarget::Config(PetCapabilityRaw {
+                    state: "sleep".into(),
+                    cooldown_ms: Some(500),
+                    after_ms: Some(30000),
+                }),
+            )]),
+            states: HashMap::from([(
+                "sleep".into(),
+                PetStateConfigRaw {
+                    src: "sleep.gif".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        let value = serde_json::to_value(&config).unwrap();
+
+        assert_eq!(value["capabilities"]["click"]["state"], "sleep");
+        assert_eq!(value["capabilities"]["click"]["cooldownMs"], 500);
+        assert_eq!(value["capabilities"]["click"]["afterMs"], 30000);
     }
 
     fn tempfile_dir() -> PathBuf {
