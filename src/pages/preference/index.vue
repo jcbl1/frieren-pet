@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { getName, getVersion } from '@tauri-apps/api/app'
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { open } from '@tauri-apps/plugin-dialog'
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 
@@ -100,19 +99,10 @@ async function handleDelete(pet: PetEntry) {
   }
 }
 
-function close() {
-  void getCurrentWebviewWindow().close()
-}
 </script>
 
 <template>
   <div class="preference-root">
-    <header class="topbar">
-      <h1 class="title">设置</h1>
-
-      <button class="close" type="button" aria-label="关闭" @click="close">×</button>
-    </header>
-
     <main class="content">
       <section class="group">
         <div class="group-head">
@@ -258,40 +248,6 @@ function close() {
   height: 100%;
   background: #fafafa;
   color: #2d2d2d;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e6e6e6;
-  background: #ffffff;
-}
-
-.title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #6b6b6b;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.close:hover {
-  background: #f0f0f0;
 }
 
 .content {
