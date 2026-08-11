@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getName, getVersion } from '@tauri-apps/api/app'
 import { open } from '@tauri-apps/plugin-dialog'
-import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 
 import { deletePet, importPet, loadPetCatalog } from '@/services/petCatalog'
 import type { PetEntry } from '@/services/petCatalog'
@@ -9,6 +9,13 @@ import { readPetIdFromDir } from '@/services/petConfig'
 import { usePetStore } from '@/stores/pet'
 
 const petStore = usePetStore()
+
+const idleSeconds = computed({
+  get: () => (petStore.idleAfterMs == null ? 60 : petStore.idleAfterMs / 1000),
+  set: (value) => {
+    petStore.idleAfterMs = value * 1000
+  },
+})
 
 const appName = ref('')
 const appVersion = ref('')
@@ -221,6 +228,39 @@ async function handleDelete(pet: PetEntry) {
           >
             <span class="knob" />
           </button>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2 class="group-title">闲置</h2>
+
+        <div class="row">
+          <div class="row-text">
+            <span class="row-label">闲置动画</span>
+            <span class="row-desc">无操作一段时间后进入睡眠等闲置状态</span>
+          </div>
+
+          <button
+            class="switch"
+            :class="{ on: petStore.idleEnabled }"
+            type="button"
+            role="switch"
+            :aria-checked="petStore.idleEnabled"
+            @click="petStore.idleEnabled = !petStore.idleEnabled"
+          >
+            <span class="knob" />
+          </button>
+        </div>
+
+        <div v-if="petStore.idleEnabled" class="row">
+          <div class="row-text">
+            <span class="row-label">闲置时间</span>
+            <span class="row-desc">10 秒 – 600 秒</span>
+          </div>
+
+          <input v-model.number="idleSeconds" class="range" type="range" min="10" max="600" step="10">
+
+          <span class="value">{{ idleSeconds }}s</span>
         </div>
       </section>
 
