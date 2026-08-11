@@ -2,7 +2,15 @@
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { onMounted } from 'vue'
 
-import { invoke, resizeWindow, saveCurrentPosition, start, usePet, wake } from '@/composables/usePet'
+import {
+  invoke,
+  resizeWindow,
+  saveCurrentPosition,
+  setDragActive,
+  start,
+  usePet,
+  wake,
+} from '@/composables/usePet'
 import PetViewport from '@/components/PetViewport.vue'
 import { usePetStore } from '@/stores/pet'
 
@@ -68,6 +76,7 @@ function handleMouseMove(event: MouseEvent) {
   dragState.tracking = true
   dragState.dragging = true
 
+  setDragActive(true)
   void invoke('dragStart')
   void appWindow.startDragging()
 }
@@ -76,6 +85,7 @@ function handleMouseUp() {
   if (dragState.dragging) {
     saveCurrentPosition()
 
+    setDragActive(false)
     void invoke('dragEnd')
   }
 

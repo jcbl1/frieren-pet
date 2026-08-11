@@ -72,6 +72,7 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 ## Window / input (do not regress)
 
 - Drag uses **`appWindow.startDragging()`** after a small move threshold — not custom `setPosition`. Custom drag + `@mouseleave` caused grip loss and blue selection chrome on macOS.
+- Idle timer is **paused while dragging**: drag threshold calls `setDragActive(true)` (clears the timer), mouseup/dragEnd calls `setDragActive(false)`. `wake()` clears the flag too, so if macOS swallows mouseup the next click/enter resumes idle. The idle callback re-arms itself while `dragActive`, so a held drag never falls into idle regardless of `afterMs`.
 - Keep `mousedown` `preventDefault` and global `user-select: none` (see `main.css`) to suppress WKWebView blue rectangles.
 - Window labels: `"main"` (pet) and `"preference"` (settings). macOS NSPanel conversion applies **only** to `main`.
 - Close is intercepted → hide; tray stays alive. Tray init failure must not abort startup.

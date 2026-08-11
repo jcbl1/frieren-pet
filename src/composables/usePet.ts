@@ -156,6 +156,8 @@ export async function invoke(cap: string) {
 
 const capabilityCooldowns = new Map<string, number>()
 
+let dragActive = false
+
 async function resetIdleTimer() {
   const config = await ensurePetConfig()
   const idleTarget = config.capabilities?.['idle']
@@ -169,11 +171,35 @@ async function resetIdleTimer() {
   }
 
   idleTimer = setTimeout(() => {
+    if (dragActive) {
+      void resetIdleTimer()
+
+      return
+    }
+
     void invoke('idle')
   }, afterMs)
 }
 
+export function setDragActive(active: boolean) {
+  dragActive = active
+
+  if (active) {
+    if (idleTimer) {
+      clearTimeout(idleTimer)
+
+      idleTimer = undefined
+    }
+
+    return
+  }
+
+  void resetIdleTimer()
+}
+
 export function wake() {
+  dragActive = false
+
   void resetIdleTimer()
 }
 
@@ -375,6 +401,7 @@ export function usePet() {
     reloadPet,
     invoke,
     wake,
+    setDragActive,
     resizeWindow,
   }
 }
