@@ -23,38 +23,47 @@ cargo check -p frieren-pet   # after Rust edits (prefer -p; bare `cargo check` m
 | Path | Role |
 |------|------|
 | `src/` | Vue frontend (`@/` → `src/`) |
-| `src/pages/main/index.vue` | Pet window UI: drag, click, scale |
-| `src/pages/preference/index.vue` | Settings window: scale/opacity/alwaysOnTop/passThrough/about |
+| `src/pages/main/index.vue` | Pet window UI: drag, click → `invoke`, scale |
+| `src/pages/preference/index.vue` | Settings: pet cards / import-delete / scale/opacity/alwaysOnTop/passThrough/about |
 | `src/router/index.ts` | Hash router: `#/` (main) + `#/preference` (settings) |
 | `src/stores/pet.ts` | Pinia store, **persisted** via `@tauri-store/pinia` (`$tauri.start()` + `saveOnChange`) |
-| `src/composables/usePet.ts` | State machine + asset resolve + window resize |
-| `src/types/pet.ts` | `PetConfig` / `PetStateConfig` / `PetCapabilities` / `PetFormat` (v1 协议) |
-| `src/services/petConfig.ts` | **Runtime** loader: `loadPresetPetIds()` (manifest) + `loadPetConfig(id)` |
-| `src-tauri/assets/pets/<id>/` | `pet.json` + GIF/PNG resources (`resolveResource` + asset protocol) |
-| `src-tauri/assets/pets/manifest.json` | `presets` 内置角色 id 列表（运行时读取） |
-| `src-tauri/src/lib.rs` | App entry, single-instance (2nd launch → settings), close→hide |
+| `src/composables/usePet.ts` | State machine + pet reload + window resize / position |
+| `src/types/pet.ts` | `PetConfig` / `PetStateConfig` / `PetCapabilities` / `PetFormat` (v1) |
+| `src/services/petConfig.ts` | Load/validate `pet.json`; preset via manifest; user via `appDataDir/pets` |
+| `src/services/petCatalog.ts` | Catalog list + `importPet` / `deletePet` wrappers |
+| `src/renderers/` | `PetRenderer` + `GifRenderer` + `createRenderer` |
+| `src/components/PetViewport.vue` | Hosts active renderer |
+| `src-tauri/assets/pets/<id>/` | `pet.json` + media (`resolveResource` + asset protocol) |
+| `src-tauri/assets/pets/manifest.json` | `presets` built-in id list (runtime) |
+| `src-tauri/src/lib.rs` | App entry, `import_pet`/`delete_pet`, single-instance → settings, close→hide |
+| `src-tauri/src/utils/pet_import.rs` | Import validation + copy into app data; delete user pets |
 | `src-tauri/src/setup/` | Tray + platform setup (`macos.rs` / `common.rs`) |
 | `vendor/tauri-nspanel/` | macOS-only path dep (do not fetch from GitHub) |
 | `ref/` | Upstream mirror — **never commit** |
 
 Cargo workspace root is this directory; only member is `src-tauri`.
 
-## Asset / state coupling (easy to break)
+## Multi-pet / asset coupling (easy to break)
 
 - GIFs and `pet.json` live under `src-tauri/assets/…` and are listed in `bundle.resources`.
 - `src-tauri/build.rs` emits `cargo:rerun-if-changed=assets`, so ANY add/change/remove under `src-tauri/assets/` triggers a cargo rebuild that re-copies resources into the dev resource dir (`target/<triple>/debug/assets`). Without it, newly added files under the `assets/pets/**/*` glob are silently never copied (tauri-build only watches files that existed at build time).
-- `pet.json` is loaded **at runtime** by `src/services/petConfig.ts` (`resolveResource` → asset-protocol `fetch`). Built-in ids come from `assets/pets/manifest.json`; changing JSON does NOT need a frontend rebuild, but DOES require a rebuild/re-run of the Tauri bundle for packaged apps.
-- `resourceDir` in pet.json is relative to Tauri resources (e.g. `assets/pets/frieren`), not the Vue `src/` tree.
-- UI sends **intents** only: `invoke('click')` in `index.vue`, idle timer calls `invoke('idle')`, initial load uses `start()` (`setState(config.defaultState)`) — all in `usePet.ts`. Intents map to per-pet state names via `capabilities` in pet.json; a missing capability/state is a silent no-op. State names are fully configurable per pet (a pet without `click` just ignores clicks).
-- Current pet uses only `sleep.gif` (`defaultState: "sleep"`). `idle.gif` / `fallback.png` are unused leftovers.
+- Built-in ids come from `assets/pets/manifest.json` (do not rely on `readDir` of the bundle). User pets are scanned from `{appDataDir}/pets/*` via `plugin-fs` `readDir`.
+- `pet.json` is loaded **at runtime** (`petConfig.ts` / asset-protocol `fetch`). Changing JSON does NOT need a frontend rebuild, but packaged apps need a Tauri rebuild/re-run for preset changes.
+- **`resourceDir` is NOT stored in `pet.json`**. Loaders inject it: presets from `resolveResource('assets/pets/<id>')`, users from absolute `appDataDir/pets/<id>`. Never write `resourceDir` into a pet package.
+- UI sends **intents** only: `invoke('click')` on click, idle timer → `invoke('idle')`, load/switch → `start()` / `reloadPet()` → `setState(defaultState)`. Intents map via `capabilities` in pet.json; missing capability/state is a silent no-op. State names are fully per-pet.
+- `currentPetId` is in the Pinia store (default `"frieren"`). Main `usePet()` watches it and calls `reloadPet()` (clear config cache → load → default state → resize → wake). Preference only writes the id.
+- Render path: `PetViewport` + `createRenderer(format)`. Only `gif` is implemented; extend `PetFormat` + `createRenderer` for new backends.
+- Import/delete are Rust commands (`import_pet` / `delete_pet` in `utils/pet_import.rs`): validate id/format/states/media/capabilities, reject preset id clash, copy into app data. Frontend confirms overwrite of existing user id before invoke.
+- Preset `fern` has no `click` capability (click is no-op) — useful when testing capability mapping.
+- Plugins: `tauri-plugin-fs`, `tauri-plugin-dialog` (+ JS packages); capabilities need `fs:default` and `dialog:default`.
 
 ## Persistence / settings
 
-- Config lives in `src/stores/pet.ts` (Pinia option store: `scale` / `alwaysOnTop` / `opacity` / `passThrough` / `x` / `y`). Persisted with `@tauri-store/pinia` (`saveOnChange`) + `tauri-plugin-pinia` (Rust), auto-synced across windows.
-- **Every persisted field MUST be in the initial `state()`** (use `null` for optional). Assigning a new key on an option store only sets a local proxy property — it never enters `$state`, so `@tauri-store/pinia` never patches/saves it.
+- Config lives in `src/stores/pet.ts` (option store: `currentPetId` / `scale` / `alwaysOnTop` / `opacity` / `passThrough` / `x` / `y`). Persisted with `@tauri-store/pinia` (`saveOnChange`) + `tauri-plugin-pinia` (Rust), auto-synced across windows.
+- **Every persisted field MUST be in the initial `state()`** (use `null` for optional). Assigning a new key on an option store only sets a local proxy property — it never enters `$state`, so `@tauri-store/pinia` never patches/saves it. Catalog lists are **not** persisted.
 - Both windows call `petStore.$tauri.start()` in `App.vue` `onMounted` (guarded by `__TAURI_INTERNALS__` for `pnpm dev`); main page re-awaits it in its own `onMounted` before the first `resizeWindow()` so saved position/scale restore deterministically.
-- Window side-effects only run on **main**: `usePet()` registers `alwaysOnTop`/`passThrough` watchers + `scale` resize + position capture (400ms poll of `outerPosition`/`outerSize` + save on close-requested; macOS NSPanel does NOT deliver `onMoved`, so do not rely on it). Do NOT call these in the preference window (separate bundle entry via hash route).
-- `resizeWindow()` in `usePet.ts`: coalesced single-flight (concurrent calls are serialized, latest target wins). The geometric **center** is tracked in JS module state (`center`), updated only by restore/init or the poll of a settled frame (never read during a resize — `resizing` gate), and every resize pins `setPosition(center − target/2)` so macOS's async `setSize`/`setPosition` (GCD-dispatched) cannot accumulate drift. First run restores saved `x/y` once (guarded by `availableMonitors` on-screen check). Needs `core:window:allow-outer-position` / `allow-outer-size` in capabilities.
+- Window side-effects only run on **main**: `usePet()` registers `alwaysOnTop`/`passThrough` watchers + `scale` resize + `currentPetId` reload + position capture (400ms poll of `outerPosition`/`outerSize` + save on close-requested; macOS NSPanel does NOT deliver `onMoved`, so do not rely on it). Do NOT call these in the preference window (separate bundle entry via hash route).
+- `resizeWindow()` in `usePet.ts`: coalesced single-flight (concurrent calls are serialized, latest target wins). Size comes from the **current** pet's `width`/`height`. The geometric **center** is tracked in JS module state (`center`), updated only by restore/init or the poll of a settled frame (never read during a resize — `resizing` gate), and every resize pins `setPosition(center − target/2)` so macOS's async `setSize`/`setPosition` (GCD-dispatched) cannot accumulate drift. First run restores saved `x/y` once (guarded by `availableMonitors` on-screen check). Needs `core:window:allow-outer-position` / `allow-outer-size` in capabilities.
 - Tray "设置" shows the `preference` window; single-instance second launch also shows it.
 - `src/pages/preference/index.vue` uses lightweight native CSS — no component library. `main.css` opts the preference body out of transparent/no-select defaults via `body.preference`.
 

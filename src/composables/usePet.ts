@@ -1,11 +1,11 @@
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi'
-import { resolveResource } from '@tauri-apps/api/path'
+import { join } from '@tauri-apps/api/path'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { availableMonitors } from '@tauri-apps/api/window'
 import { computed, ref, watch } from 'vue'
 
-import { loadPetConfig, loadPresetPetIds } from '@/services/petConfig'
+import { loadPetConfigById, loadPresetPetConfig, loadPresetPetIds } from '@/services/petConfig'
 import { usePetStore } from '@/stores/pet'
 import type { PetConfig } from '@/types/pet'
 
@@ -14,11 +14,11 @@ export type PetState = string
 const IDLE_SLEEP_DELAY = 60_000
 const DEFAULT_PET_ID = 'frieren'
 
-let petConfig: PetConfig | null = null
 let petConfigPromise: Promise<PetConfig> | null = null
 
 const currentState = ref<PetState>('')
 const currentSrc = ref<string>('')
+const petConfigRef = ref<PetConfig | null>(null)
 
 let idleTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -35,25 +35,26 @@ async function loadDefaultPetConfig() {
 
   if (petStore.currentPetId !== id) petStore.currentPetId = id
 
-  return loadPetConfig(id)
+  return loadPresetPetConfig(id)
 }
 
 function ensurePetConfig(): Promise<PetConfig> {
   const id = getCurrentPetId()
+  const current = petConfigRef.value
 
-  if (petConfig?.id === id) return Promise.resolve(petConfig)
+  if (current?.id === id) return Promise.resolve(current)
 
   if (petConfigPromise) return petConfigPromise
 
-  petConfig = null
-  petConfigPromise = loadPetConfig(id)
+  petConfigRef.value = null
+  petConfigPromise = loadPetConfigById(id)
     .catch((error) => {
       console.error(`[frieren-pet] load pet "${id}" failed:`, error)
 
       return loadDefaultPetConfig()
     })
     .then((config) => {
-      petConfig = config
+      petConfigRef.value = config
       petConfigPromise = null
 
       return config
@@ -64,7 +65,7 @@ function ensurePetConfig(): Promise<PetConfig> {
 
 async function resolveStateSrc(src: string) {
   const config = await ensurePetConfig()
-  const path = await resolveResource(`${config.resourceDir}/${src}`)
+  const path = await join(config.resourceDir, src)
 
   return convertFileSrc(path)
 }
@@ -102,21 +103,30 @@ export async function start() {
 }
 
 let reloading = false
+let pendingReload = false
 
 export async function reloadPet() {
-  if (reloading) return
+  if (reloading) {
+    pendingReload = true
+
+    return
+  }
 
   reloading = true
 
   try {
-    petConfig = null
-    petConfigPromise = null
+    do {
+      pendingReload = false
 
-    const config = await ensurePetConfig()
+      petConfigRef.value = null
+      petConfigPromise = null
 
-    await setState(config.defaultState)
-    await resizeWindow()
-    wake()
+      const config = await ensurePetConfig()
+
+      await setState(config.defaultState)
+      await resizeWindow()
+      wake()
+    } while (pendingReload)
   } finally {
     reloading = false
   }
@@ -336,6 +346,7 @@ export function usePet() {
   })
 
   return {
+    config: computed(() => petConfigRef.value),
     currentState,
     currentSrc: computed(() => currentSrc.value),
     start,

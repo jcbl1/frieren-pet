@@ -16,6 +16,8 @@
     "core:window:allow-outer-position",
     "core:window:allow-outer-size",
     "core:path:allow-resolve-directory",
-    "pinia:default"
+    "pinia:default",
+    "dialog:default",
+    "fs:default"
   ]
 }
