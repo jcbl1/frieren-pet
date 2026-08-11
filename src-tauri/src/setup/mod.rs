@@ -5,7 +5,7 @@ mod common;
 mod macos;
 
 use tauri::{
-    App, Manager, Wry,
+    App, AppHandle, Manager, Wry,
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -34,21 +34,40 @@ pub fn default(app: &App<Wry>) -> tauri::Result<()> {
     Ok(())
 }
 
+pub fn refresh_tray_menu(app: &AppHandle<Wry>) {
+    let Some(tray) = app.tray_by_id(MAIN_WINDOW_LABEL) else {
+        return;
+    };
+
+    let visible = app
+        .get_webview_window(MAIN_WINDOW_LABEL)
+        .and_then(|window| window.is_visible().ok())
+        .unwrap_or(false);
+
+    let label = if visible { "隐藏" } else { "显示" };
+
+    let Ok(settings) = MenuItem::with_id(app, "settings", "设置", true, None::<&str>) else {
+        return;
+    };
+    let Ok(toggle) = MenuItem::with_id(app, "toggle", label, true, None::<&str>) else {
+        return;
+    };
+    let Ok(quit) = MenuItem::with_id(app, "quit", "退出", true, None::<&str>) else {
+        return;
+    };
+    let Ok(menu) = Menu::with_items(app, &[&settings, &toggle, &quit]) else {
+        return;
+    };
+
+    let _ = tray.set_menu(Some(menu));
+}
+
 fn setup_tray(app: &App<Wry>) -> tauri::Result<()> {
-    let settings = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
-    let show = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
-    let hide = MenuItem::with_id(app, "hide", "隐藏", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-
-    let menu = Menu::with_items(app, &[&settings, &show, &hide, &quit])?;
-
     let icon = Image::from_bytes(TRAY_ICON)?;
 
     TrayIconBuilder::with_id(MAIN_WINDOW_LABEL)
         .icon(icon)
         .tooltip("Frieren Pet")
-        .menu(&menu)
-        .icon_as_template(true)
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
@@ -67,6 +86,7 @@ fn setup_tray(app: &App<Wry>) -> tauri::Result<()> {
                             let _ = window.show();
                         }
                     }
+                    refresh_tray_menu(app);
                 }
             }
         })
@@ -77,20 +97,25 @@ fn setup_tray(app: &App<Wry>) -> tauri::Result<()> {
                     let _ = window.set_focus();
                 }
             }
-            "show" => {
+            "toggle" => {
                 if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
-                    let _ = window.show();
-                }
-            }
-            "hide" => {
-                if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
-                    let _ = window.hide();
+                    match window.is_visible() {
+                        Ok(true) => {
+                            let _ = window.hide();
+                        }
+                        _ => {
+                            let _ = window.show();
+                        }
+                    }
+                    refresh_tray_menu(app);
                 }
             }
             "quit" => app.exit(0),
             _ => {}
         })
         .build(app)?;
+
+    refresh_tray_menu(app.handle());
 
     Ok(())
 }

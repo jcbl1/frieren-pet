@@ -46,21 +46,31 @@
 角色资源在 `src-tauri/assets/pets/<id>/`：
 
 ```
-assets/pets/frieren/
-├── sleep.gif     # ← frieren_sleeping.gif（当前唯一在用素材）
-├── idle.gif      # ← frieren_breathing.gif（未使用）
-└── fallback.png  # ← frieren_no_bg.png（未使用）
+assets/pets/
+├── manifest.json  # presets 内置角色 id 列表（运行时读取）
+└── frieren/
+    ├── pet.json   # 状态协议（运行时加载，改 JSON 无需重建前端）
+    ├── sleep.gif  # ← frieren_sleeping.gif（当前唯一在用素材）
+    ├── idle.gif   # ← frieren_breathing.gif（未使用）
+    └── fallback.png  # ← frieren_no_bg.png（未使用，可作 preview）
 ```
 
-状态定义在 `src/assets/pets/frieren/pet.json`：
+状态定义在 `src-tauri/assets/pets/frieren/pet.json`：
 
 ```jsonc
 {
   "id": "frieren",
+  "name": "Frieren",
+  "format": "gif",
   "resourceDir": "assets/pets/frieren",
   "width": 736,
   "height": 736,
   "defaultState": "sleep",
+  "preview": "fallback.png",
+  "capabilities": {
+    "click": "click",
+    "idle": "sleep"
+  },
   "states": {
     "sleep": { "src": "sleep.gif", "loop": true },
     "click": { "src": "sleep.gif", "loop": false, "durationMs": 800, "next": "sleep" }
@@ -68,6 +78,7 @@ assets/pets/frieren/
 }
 ```
 
+- `format` 为渲染后端，当前仅 `gif`；未知格式会被 `src/services/petConfig.ts` 拒绝
 - `width/height` 为角色基准尺寸，窗口按 `petStore.scale` 缩放
 - `durationMs` + `next` 表示一次性动画播完后切换到的状态
 - 默认行为：`sleep` 循环；点击播放 `click` 动画后回到 `sleep`
@@ -146,13 +157,15 @@ core/
 │   ├── pages/main/         #   桌宠主窗口
 │   ├── pages/preference/   #   设置窗口（缩放/透明度/置顶/穿透/关于）
 │   ├── composables/usePet  #   状态机 + 资源解析 + 中心缩放 + 位置捕获
+│   ├── services/petConfig  #   运行时加载 pet.json + manifest
+│   ├── types/pet           #   pet.json v1 协议类型
 │   ├── stores/pet          #   Pinia 配置 store（持久化）
-│   └── assets/pets/        #   pet.json 状态协议
+│   └── assets/             #   css 等（角色资源已移至 src-tauri/assets/pets）
 └── src-tauri/
     ├── tauri.conf.json     # 窗口/资源/打包配置（main + preference 双窗）
     ├── tauri.*.conf.json   # 各平台覆盖
     ├── capabilities/       # 前端权限（含 pinia、outer-position/size）
-    ├── assets/pets/        # GIF 素材（asset protocol 提供）
+    ├── assets/pets/        # pet.json + GIF 素材（asset protocol 提供）
     └── src/
         ├── lib.rs          # 应用入口、单实例（二次启动→设置窗）、关窗隐藏
         └── setup/          # 托盘（设置/显示/隐藏/退出）、macOS panel

@@ -2,7 +2,7 @@
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { onMounted } from 'vue'
 
-import { resizeWindow, saveCurrentPosition, setState, usePet, wake } from '@/composables/usePet'
+import { invoke, resizeWindow, saveCurrentPosition, start, usePet, wake } from '@/composables/usePet'
 import { usePetStore } from '@/stores/pet'
 
 const appWindow = getCurrentWebviewWindow()
@@ -23,8 +23,14 @@ const dragState = {
 
 onMounted(async () => {
   await petStore.$tauri.start()
-  await setState('sleep')
-  await resizeWindow()
+
+  try {
+    await start()
+    await resizeWindow()
+  } catch (error) {
+    console.error('[frieren-pet] pet init failed:', error)
+  }
+
   wake()
 })
 
@@ -82,7 +88,7 @@ function handleClick() {
 
   wake()
 
-  void setState('click')
+  void invoke('click')
 }
 </script>
 

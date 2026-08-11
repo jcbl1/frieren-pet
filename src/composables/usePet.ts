@@ -5,65 +5,130 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { availableMonitors } from '@tauri-apps/api/window'
 import { computed, ref, watch } from 'vue'
 
-import petConfigRaw from '@/assets/pets/frieren/pet.json'
+import { loadPetConfig, loadPresetPetIds } from '@/services/petConfig'
 import { usePetStore } from '@/stores/pet'
+import type { PetConfig } from '@/types/pet'
 
-export interface PetStateConfig {
-  src: string
-  loop: boolean
-  durationMs?: number
-  next?: string
-}
-
-export interface PetConfig {
-  id: string
-  name: string
-  resourceDir: string
-  width: number
-  height: number
-  defaultState: string
-  states: Record<string, PetStateConfig>
-}
-
-const petConfig = petConfigRaw as PetConfig
-
-export type PetState = keyof typeof petConfigRaw.states
+export type PetState = string
 
 const IDLE_SLEEP_DELAY = 60_000
+const DEFAULT_PET_ID = 'frieren'
 
-const currentState = ref<PetState>(petConfig.defaultState as PetState)
+let petConfig: PetConfig | null = null
+let petConfigPromise: Promise<PetConfig> | null = null
+
+const currentState = ref<PetState>('')
 const currentSrc = ref<string>('')
 
 let idleTimer: ReturnType<typeof setTimeout> | undefined
 
+function getCurrentPetId() {
+  const petStore = usePetStore()
+
+  return petStore.currentPetId ?? DEFAULT_PET_ID
+}
+
+async function loadDefaultPetConfig() {
+  const presetIds = await loadPresetPetIds()
+  const id = presetIds[0] ?? DEFAULT_PET_ID
+  const petStore = usePetStore()
+
+  if (petStore.currentPetId !== id) petStore.currentPetId = id
+
+  return loadPetConfig(id)
+}
+
+function ensurePetConfig(): Promise<PetConfig> {
+  const id = getCurrentPetId()
+
+  if (petConfig?.id === id) return Promise.resolve(petConfig)
+
+  if (petConfigPromise) return petConfigPromise
+
+  petConfig = null
+  petConfigPromise = loadPetConfig(id)
+    .catch((error) => {
+      console.error(`[frieren-pet] load pet "${id}" failed:`, error)
+
+      return loadDefaultPetConfig()
+    })
+    .then((config) => {
+      petConfig = config
+      petConfigPromise = null
+
+      return config
+    })
+
+  return petConfigPromise
+}
+
 async function resolveStateSrc(src: string) {
-  const path = await resolveResource(`${petConfig.resourceDir}/${src}`)
+  const config = await ensurePetConfig()
+  const path = await resolveResource(`${config.resourceDir}/${src}`)
 
   return convertFileSrc(path)
 }
 
-function scheduleStateTransition(state: PetState) {
-  const config = petConfig.states[state]
+async function scheduleStateTransition(state: PetState) {
+  const config = await ensurePetConfig()
+  const stateConfig = config.states[state]
 
-  if (!config || !config.durationMs) return
+  if (!stateConfig || !stateConfig.durationMs) return
 
   setTimeout(() => {
     if (currentState.value !== state) return
 
-    void setState((config.next ?? petConfig.defaultState) as PetState)
-  }, config.durationMs)
+    void setState((stateConfig.next ?? config.defaultState) as PetState)
+  }, stateConfig.durationMs)
 }
 
-export async function setState(state: PetState) {
-  const config = petConfig.states[state]
+async function setState(state: PetState) {
+  const config = await ensurePetConfig()
+  const stateConfig = config.states[state]
 
-  if (!config) return
+  if (!stateConfig) return
 
   currentState.value = state
 
-  currentSrc.value = await resolveStateSrc(config.src)
+  currentSrc.value = await resolveStateSrc(stateConfig.src)
 
-  scheduleStateTransition(state)
+  await scheduleStateTransition(state)
+}
+
+export async function start() {
+  const config = await ensurePetConfig()
+
+  await setState(config.defaultState)
+}
+
+let reloading = false
+
+export async function reloadPet() {
+  if (reloading) return
+
+  reloading = true
+
+  try {
+    petConfig = null
+    petConfigPromise = null
+
+    const config = await ensurePetConfig()
+
+    await setState(config.defaultState)
+    await resizeWindow()
+    wake()
+  } finally {
+    reloading = false
+  }
+}
+
+export async function invoke(cap: string) {
+  const config = await ensurePetConfig()
+  const state = config.capabilities?.[cap]
+
+  if (!state || !config.states[state]) return
+
+  await setState(state)
 }
 
 function resetIdleTimer() {
@@ -72,9 +137,7 @@ function resetIdleTimer() {
   }
 
   idleTimer = setTimeout(() => {
-    if (petConfig.states.sleep) {
-      void setState('sleep')
-    }
+    void invoke('idle')
   }, IDLE_SLEEP_DELAY)
 }
 
@@ -142,13 +205,14 @@ async function isPositionOnScreen(x: number, y: number) {
 }
 
 async function doResize() {
+  const config = await ensurePetConfig()
   const petStore = usePetStore()
   const appWindow = getCurrentWebviewWindow()
   const scale = petStore.scale / 100
 
   const target = new PhysicalSize({
-    width: Math.round(petConfig.width * scale),
-    height: Math.round(petConfig.height * scale),
+    width: Math.round(config.width * scale),
+    height: Math.round(config.height * scale),
   })
 
   const savedX = petStore.x
@@ -234,6 +298,15 @@ export function usePet() {
   const petStore = usePetStore()
   const appWindow = getCurrentWebviewWindow()
 
+  watch(
+    () => petStore.currentPetId,
+    (id) => {
+      if (!id) return
+
+      void reloadPet()
+    },
+  )
+
   watch(() => petStore.scale, resizeWindow)
 
   watch(
@@ -265,7 +338,9 @@ export function usePet() {
   return {
     currentState,
     currentSrc: computed(() => currentSrc.value),
-    setState,
+    start,
+    reloadPet,
+    invoke,
     wake,
     resizeWindow,
   }

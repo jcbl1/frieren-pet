@@ -23,6 +23,7 @@ pub fn run() {
                 let _ = window.set_focus();
             } else if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
+                setup::refresh_tray_menu(app);
             }
         }))
         .on_window_event(|window, event| match event {
@@ -30,6 +31,10 @@ pub fn run() {
                 let _ = window.hide();
 
                 api.prevent_close();
+
+                if window.label() == "main" {
+                    setup::refresh_tray_menu(window.app_handle());
+                }
             }
             _ => {}
         })
