@@ -8,6 +8,7 @@
   "preview": "fallback.png",
   "capabilities": {
     "click": "click",
+    "doubleClick": "click",
     "idle": "sleep"
   },
   "states": {

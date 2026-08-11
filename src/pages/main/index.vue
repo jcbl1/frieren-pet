@@ -68,12 +68,15 @@ function handleMouseMove(event: MouseEvent) {
   dragState.tracking = true
   dragState.dragging = true
 
+  void invoke('dragStart')
   void appWindow.startDragging()
 }
 
 function handleMouseUp() {
   if (dragState.dragging) {
     saveCurrentPosition()
+
+    void invoke('dragEnd')
   }
 
   dragState.active = false
@@ -91,6 +94,32 @@ function handleClick() {
 
   void invoke('click')
 }
+
+function handleDoubleClick() {
+  wake()
+
+  void invoke('doubleClick')
+}
+
+function handleMouseEnter() {
+  wake()
+
+  void invoke('mouseEnter')
+}
+
+function handleMouseLeave() {
+  void invoke('mouseLeave')
+}
+
+function handleContextMenu(event: MouseEvent) {
+  event.preventDefault()
+
+  if (event.shiftKey) return
+
+  wake()
+
+  void invoke('rightClick')
+}
 </script>
 
 <template>
@@ -101,8 +130,10 @@ function handleClick() {
     @mousemove="handleMouseMove"
     @mouseup="handleMouseUp"
     @click="handleClick"
-    @mouseenter="wake"
-    @contextmenu.prevent
+    @dblclick="handleDoubleClick"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+    @contextmenu="handleContextMenu"
   >
     <PetViewport :config="config" :state="currentState" :src="currentSrc" />
   </div>

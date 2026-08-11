@@ -88,7 +88,8 @@ src-tauri/assets/pets/
   "preview": "fallback.png",
   "capabilities": {
     "click": "click",
-    "idle": "sleep"
+    "doubleClick": { "state": "click", "cooldownMs": 500 },
+    "idle": { "state": "sleep", "afterMs": 45000 }
   },
   "states": {
     "sleep": { "src": "sleep.gif", "loop": true },
@@ -109,7 +110,9 @@ src-tauri/assets/pets/
 | `width` / `height` | 角色基准尺寸，窗口按 `petStore.scale` 缩放 |
 | `defaultState` | 启动 / 切换角色后的初始状态，必须 ∈ `states` |
 | `preview` | 设置页缩略图（相对包根）；缺省用 `defaultState` 的 `src` |
-| `capabilities` | UI **意图** → 本角色状态名；缺 key 或目标 state 不存在 → **静默 no-op** |
+| `capabilities` | UI **意图** → 本角色状态名；值可为字符串简写 `"state"` 或对象 `{ state, cooldownMs?, afterMs? }`；缺 key 或目标 state 不存在 → **静默 no-op** |
+| `capabilities.*.cooldownMs` | 同意图最小触发间隔（防连发），可选项 |
+| `capabilities.*.afterMs` | 仅 `idle` 用：空闲触发延时；缺省全局 60s |
 | `states.*.src` | 相对包根的媒体文件 |
 | `states.*.durationMs` + `next` | 一次性动画结束后切换的状态 |
 
@@ -119,11 +122,20 @@ src-tauri/assets/pets/
 
 主窗 UI **不** hardcode 状态名：
 
-- 点击 → `invoke('click')`
-- 空闲定时（60s）→ `invoke('idle')`
+- 单击 → `invoke('click')`（先触发；双击时随后再触发 `doubleClick`，无点击延迟）
+- 双击 → `invoke('doubleClick')`
+- 鼠标进入 → `invoke('mouseEnter')`（同时重置空闲定时）
+- 鼠标离开 → `invoke('mouseLeave')`
+- 拖动开始（越过阈值）→ `invoke('dragStart')`，随后 `startDragging()`
+- 拖动结束（mouseup）→ `invoke('dragEnd')`
+- 右键 → `invoke('rightClick')`（`preventDefault` 屏蔽原生菜单；Shift+右键缩放时不触发）
+- 空闲定时 → `invoke('idle')`（`afterMs` 由 `capabilities.idle` 配置，缺省 60s）
 - 启动 / 切角 → `start()` / `reloadPet()` → `setState(config.defaultState)`
 
-映射在 `usePet.ts`：`capabilities[cap]` → `setState`。状态名完全由各角色自定义。
+映射在 `usePet.ts`：`invoke(cap)` 读 `capabilities[cap]` → `setState`。状态名完全由各角色自定义。
+
+> **macOS 限制**：原生拖拽会吞掉 mouseup（与位置保存同因，见「设置与持久化」），因此
+> `dragEnd` 在 macOS 上可能不触发；`dragStart` 在 `startDragging()` 前触发，各平台可靠。
 
 ### 渲染
 
@@ -141,7 +153,7 @@ src-tauri/assets/pets/
 ### 导入校验（Rust `utils/pet_import.rs`）
 
 - 必填：`id` `name` `format` `width` `height` `defaultState` `states`
-- `defaultState` / `capabilities.*` / `states.*.next` 目标均须 ∈ `states`
+- `defaultState` / `capabilities.*`（字符串或对象两种形式）/ `states.*.next` 目标均须 ∈ `states`
 - 每个 `states.*.src`（及可选 `preview`）文件必须存在于所选目录
 - `format` ∈ 支持列表（当前 `gif`）
 - 与 `manifest.json` 内置 id 冲突 → 拒绝；同 id 用户包 → 覆盖前确认

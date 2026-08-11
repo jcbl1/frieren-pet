@@ -7,7 +7,13 @@ export interface PetStateConfig {
   next?: string
 }
 
-export type PetCapabilities = Record<string, string>
+export interface PetCapability {
+  state: string
+  cooldownMs?: number
+  afterMs?: number
+}
+
+export type PetCapabilities = Record<string, string | PetCapability>
 
 export interface PetConfig {
   id: string

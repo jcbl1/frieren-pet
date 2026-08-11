@@ -120,6 +120,7 @@ export async function reloadPet() {
 
       petConfigRef.value = null
       petConfigPromise = null
+      capabilityCooldowns.clear()
 
       const config = await ensurePetConfig()
 
@@ -134,25 +135,46 @@ export async function reloadPet() {
 
 export async function invoke(cap: string) {
   const config = await ensurePetConfig()
-  const state = config.capabilities?.[cap]
+  const target = config.capabilities?.[cap]
 
-  if (!state || !config.states[state]) return
+  if (!target) return
+
+  const state = typeof target === 'string' ? target : target.state
+
+  if (!config.states[state]) return
+
+  if (typeof target === 'object' && target.cooldownMs) {
+    const until = capabilityCooldowns.get(cap)
+
+    if (until != null && Date.now() < until) return
+
+    capabilityCooldowns.set(cap, Date.now() + target.cooldownMs)
+  }
 
   await setState(state)
 }
 
-function resetIdleTimer() {
+const capabilityCooldowns = new Map<string, number>()
+
+async function resetIdleTimer() {
+  const config = await ensurePetConfig()
+  const idleTarget = config.capabilities?.['idle']
+  const afterMs =
+    idleTarget && typeof idleTarget === 'object' && idleTarget.afterMs
+      ? idleTarget.afterMs
+      : IDLE_SLEEP_DELAY
+
   if (idleTimer) {
     clearTimeout(idleTimer)
   }
 
   idleTimer = setTimeout(() => {
     void invoke('idle')
-  }, IDLE_SLEEP_DELAY)
+  }, afterMs)
 }
 
 export function wake() {
-  resetIdleTimer()
+  void resetIdleTimer()
 }
 
 let positionRestored = false
