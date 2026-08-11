@@ -4,11 +4,10 @@
   "format": "gif",
   "width": 736,
   "height": 736,
-  "defaultState": "sleep",
+  "defaultState": "active",
   "preview": "fallback.png",
   "capabilities": {
-    "click": "click",
-    "doubleClick": "click",
+    "click": "active",
     "idle": "sleep"
   },
   "states": {
@@ -16,11 +15,8 @@
       "src": "sleep.gif",
       "loop": true
     },
-    "click": {
-      "src": "sleep.gif",
-      "loop": false,
-      "durationMs": 800,
-      "next": "sleep"
+    "active": {
+      "src": "active.png"
     }
   }
 }
