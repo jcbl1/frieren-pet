@@ -157,16 +157,21 @@ export async function invoke(cap: string) {
 const capabilityCooldowns = new Map<string, number>()
 
 async function resetIdleTimer() {
-  const config = await ensurePetConfig()
-  const idleTarget = config.capabilities?.['idle']
-  const afterMs =
-    idleTarget && typeof idleTarget === 'object' && idleTarget.afterMs
-      ? idleTarget.afterMs
-      : IDLE_SLEEP_DELAY
+  const petStore = usePetStore()
 
   if (idleTimer) {
     clearTimeout(idleTimer)
   }
+
+  if (!petStore.idleEnabled) return
+
+  const config = await ensurePetConfig()
+  const idleTarget = config.capabilities?.['idle']
+  const afterMs =
+    petStore.idleAfterMs ??
+    (idleTarget && typeof idleTarget === 'object' && idleTarget.afterMs
+      ? idleTarget.afterMs
+      : IDLE_SLEEP_DELAY)
 
   idleTimer = setTimeout(() => {
     void invoke('idle')
@@ -340,6 +345,13 @@ export function usePet() {
   )
 
   watch(() => petStore.scale, resizeWindow)
+
+  watch(
+    () => [petStore.idleEnabled, petStore.idleAfterMs] as const,
+    () => {
+      void wake()
+    },
+  )
 
   watch(
     () => petStore.alwaysOnTop,
