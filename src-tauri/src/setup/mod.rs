@@ -14,6 +14,14 @@ use tauri::{
 const MAIN_WINDOW_LABEL: &str = "main";
 const PREFERENCE_WINDOW_LABEL: &str = "preference";
 
+pub fn set_preference_visible(app: &AppHandle<Wry>, visible: bool) {
+    #[cfg(target_os = "macos")]
+    macos::set_preference_visible(app, visible);
+
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, visible);
+}
+
 #[cfg(target_os = "macos")]
 const TRAY_ICON: &[u8] = include_bytes!("../../assets/tray-mac.png");
 #[cfg(not(target_os = "macos"))]
@@ -97,6 +105,7 @@ fn setup_tray(app: &App<Wry>) -> tauri::Result<()> {
             "settings" => {
                 if let Some(window) = app.get_webview_window(PREFERENCE_WINDOW_LABEL) {
                     let _ = window.show();
+                    set_preference_visible(app, true);
                     let _ = window.set_focus();
                 }
             }
@@ -104,6 +113,7 @@ fn setup_tray(app: &App<Wry>) -> tauri::Result<()> {
                 if let Some(window) = app.get_webview_window(PREFERENCE_WINDOW_LABEL) {
                     let _ = window.emit("open-shop-tab", ());
                     let _ = window.show();
+                    set_preference_visible(app, true);
                     let _ = window.set_focus();
                 }
             }

@@ -32,6 +32,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("preference") {
                 let _ = window.show();
+                setup::set_preference_visible(app, true);
                 let _ = window.set_focus();
             } else if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -44,8 +45,14 @@ pub fn run() {
 
                 api.prevent_close();
 
-                if window.label() == "main" {
-                    setup::refresh_tray_menu(window.app_handle());
+                match window.label() {
+                    "preference" => {
+                        setup::set_preference_visible(window.app_handle(), false);
+                    }
+                    "main" => {
+                        setup::refresh_tray_menu(window.app_handle());
+                    }
+                    _ => {}
                 }
             }
             _ => {}

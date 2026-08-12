@@ -1,4 +1,4 @@
-use tauri::{App, Manager, Wry};
+use tauri::{App, AppHandle, Manager, Wry};
 use tauri_nspanel::{
     CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt, tauri_panel,
 };
@@ -39,4 +39,12 @@ pub fn setup(app: &App<Wry>) {
             .full_screen_auxiliary()
             .into(),
     );
+}
+
+pub fn set_preference_visible(app: &AppHandle<Wry>, visible: bool) {
+    let _ = app.set_activation_policy(if visible {
+        tauri::ActivationPolicy::Regular
+    } else {
+        tauri::ActivationPolicy::Accessory
+    });
 }
