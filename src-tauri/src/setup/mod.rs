@@ -5,7 +5,7 @@ mod common;
 mod macos;
 
 use tauri::{
-    App, AppHandle, Manager, Wry,
+    App, AppHandle, Emitter, Manager, Wry,
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -49,13 +49,16 @@ pub fn refresh_tray_menu(app: &AppHandle<Wry>) {
     let Ok(settings) = MenuItem::with_id(app, "settings", "设置", true, None::<&str>) else {
         return;
     };
+    let Ok(shop) = MenuItem::with_id(app, "shop", "商店", true, None::<&str>) else {
+        return;
+    };
     let Ok(toggle) = MenuItem::with_id(app, "toggle", label, true, None::<&str>) else {
         return;
     };
     let Ok(quit) = MenuItem::with_id(app, "quit", "退出", true, None::<&str>) else {
         return;
     };
-    let Ok(menu) = Menu::with_items(app, &[&settings, &toggle, &quit]) else {
+    let Ok(menu) = Menu::with_items(app, &[&settings, &shop, &toggle, &quit]) else {
         return;
     };
 
@@ -93,6 +96,13 @@ fn setup_tray(app: &App<Wry>) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "settings" => {
                 if let Some(window) = app.get_webview_window(PREFERENCE_WINDOW_LABEL) {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            "shop" => {
+                if let Some(window) = app.get_webview_window(PREFERENCE_WINDOW_LABEL) {
+                    let _ = window.emit("open-shop-tab", ());
                     let _ = window.show();
                     let _ = window.set_focus();
                 }

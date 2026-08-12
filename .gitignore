@@ -13,6 +13,10 @@ src-tauri/gen/schemas
 *.log
 .DS_Store
 
+# Local env overrides
+.env.local
+.env.*.local
+
 # Reference mirror (read-only upstream, do not commit)
 ref/
 

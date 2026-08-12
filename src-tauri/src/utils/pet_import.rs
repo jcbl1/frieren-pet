@@ -215,10 +215,7 @@ fn config_json(root: &Path, config: &PetConfigRaw) -> Result<serde_json::Value, 
     Ok(value)
 }
 
-#[tauri::command]
-pub async fn import_pet(app: AppHandle, from_path: String) -> Result<serde_json::Value, String> {
-    let from_dir = PathBuf::from(&from_path);
-
+pub(crate) fn install_pet_from_dir(app: &AppHandle, from_dir: &Path) -> Result<serde_json::Value, String> {
     if !from_dir.is_dir() {
         return Err("所选目录不存在".into());
     }
@@ -231,15 +228,15 @@ pub async fn import_pet(app: AppHandle, from_path: String) -> Result<serde_json:
 
     let config = parse_pet_config(&config_path)?;
 
-    validate_pet_config(&config, &from_dir)?;
+    validate_pet_config(&config, from_dir)?;
 
-    let presets = preset_ids(&app)?;
+    let presets = preset_ids(app)?;
 
     if presets.iter().any(|id| id == &config.id) {
         return Err(format!("角色 id \"{}\" 与内置角色冲突", config.id));
     }
 
-    let root = user_pets_dir(&app)?;
+    let root = user_pets_dir(app)?;
     let target = root.join(&config.id);
 
     if target.is_dir() {
@@ -252,9 +249,14 @@ pub async fn import_pet(app: AppHandle, from_path: String) -> Result<serde_json:
 
     options.content_only = true;
 
-    copy(&from_dir, &target, &options).map_err(|err| format!("复制角色目录失败: {err}"))?;
+    copy(from_dir, &target, &options).map_err(|err| format!("复制角色目录失败: {err}"))?;
 
     config_json(&target, &config)
+}
+
+#[tauri::command]
+pub async fn import_pet(app: AppHandle, from_path: String) -> Result<serde_json::Value, String> {
+    install_pet_from_dir(&app, Path::new(&from_path))
 }
 
 #[tauri::command]

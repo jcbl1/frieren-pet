@@ -18,6 +18,13 @@
     "core:path:allow-resolve-directory",
     "pinia:default",
     "dialog:default",
-    "fs:default"
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$APPDATA/pets" },
+        { "path": "$APPDATA/pets/**" }
+      ]
+    }
   ]
 }

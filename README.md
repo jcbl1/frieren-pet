@@ -259,6 +259,6 @@ core/
 - 跟随光标
 - 全局键鼠/手柄驱动动作（BongoCat 的 `rdev`/`gilrs`）
 - 其它渲染后端（序列帧 / Live2D / 透明视频）：实现 `PetRenderer` 并扩展 `format`
-- zip 一键角色包、远程角色源
+- zip 一键角色包、远程角色源（接口契约见 [`docs/shop-api.md`](docs/shop-api.md)）
 - 托盘 / 右键快速切角
 - 每角色独立 scale / 位置（需在 store 初值中预留嵌套结构）
