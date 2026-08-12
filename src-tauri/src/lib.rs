@@ -3,6 +3,7 @@ mod utils;
 
 use tauri::Manager;
 
+use utils::pet_download::{fetch_shop_catalog, install_pet_from_url};
 use utils::pet_import::{delete_pet, import_pet};
 
 #[tauri::command]
@@ -18,7 +19,13 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![quit_app, import_pet, delete_pet])
+        .invoke_handler(tauri::generate_handler![
+            quit_app,
+            import_pet,
+            delete_pet,
+            fetch_shop_catalog,
+            install_pet_from_url
+        ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_pinia::init())

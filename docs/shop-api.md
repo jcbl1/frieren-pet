@@ -1,0 +1,126 @@
+# 商店接口设计
+
+远程角色商店（`feat/shop-remote-store`）客户端契约。后端按本文档实现即可与客户端对接。
+
+## 概述
+
+商店 Tab 从远程服务器拉取可获取的角色清单，用户点击「安装」后由 Rust 侧下载、解压、校验并入库，与本地「导入角色」走同一套校验与存储逻辑。
+
+```
+商店 Tab
+  ├─ loadShopCatalog()  ── invoke ──> fetch_shop_catalog  ── GET {base}/catalog
+  └─ 点击「安装」 ─────── invoke ──> install_pet_from_url ── GET {downloadUrl}（zip）
+                                       → 解压 → 校验 → appDataDir/pets/<id>/
+```
+
+- 前端 `SHOP_API_BASE` 常量：`src/services/petShop.ts`，读取 `VITE_SHOP_API_BASE`（Vite 环境变量，见下「环境配置」）
+- 后端不可达或解析失败时，**仅 dev** 自动 fallback 到内置 mock 清单（`petShop.ts` 中的 `MOCK_CATALOG`）；prod 直接报错
+- 所有请求由 Rust `reqwest` 发起，**无 CORS 限制**，后端只需提供可匿名访问的 HTTPS 直链
+
+### 环境配置（dev / prod 不同后端）
+
+| 环境 | 文件 | 值 |
+|------|------|-----|
+| dev（`pnpm tauri dev`） | `.env.development` | `VITE_SHOP_API_BASE=http://localhost:8000`（本地直连） |
+| prod（`pnpm tauri build`） | `.env.production` | `VITE_SHOP_API_BASE=https://shop.example.com`（反代入口） |
+
+`import.meta.env.DEV` 由 Vite 构建模式驱动：dev = `vite`，prod = `vite build`。本地私密覆盖可写 `.env.local`（已 gitignore）。
+
+## 字段命名
+
+JSON 一律使用 **camelCase**（与 Rust `serde(rename_all = "camelCase")` 对齐）。
+
+## 接口 1：获取角色清单
+
+```
+GET {base}/catalog
+```
+
+### 响应
+
+`200 OK`
+
+```json
+{
+  "items": [
+    {
+      "id": "fern",
+      "name": "Fern",
+      "description": "Frieren 的弟子，认真可靠的小魔法使",
+      "author": "frieren-pet",
+      "version": "1.0.0",
+      "size": 2048000,
+      "previewUrl": "https://cdn.example.com/pets/fern.png",
+      "downloadUrl": "https://cdn.example.com/pets/fern.zip",
+      "tags": ["anime", "gif"]
+    }
+  ]
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `items` | `array` | 是 | 角色列表，可为空数组 |
+| `items[].id` | `string` | 是 | 角色 id，须匹配 `/^[a-z0-9][a-z0-9_-]{0,63}$/i`，且不得与内置 preset 冲突 |
+| `items[].name` | `string` | 是 | 显示名称 |
+| `items[].description` | `string` | 是 | 卡片简介 |
+| `items[].author` | `string` | 是 | 作者/来源 |
+| `items[].version` | `string` | 是 | 版本号（UI 展示用） |
+| `items[].size` | `number` | 否 | zip 体积，字节 |
+| `items[].previewUrl` | `string` | 是 | 卡片缩略图直链（可匿名访问） |
+| `items[].downloadUrl` | `string` | 是 | 角色包 zip 直链 |
+| `items[].tags` | `array<string>` | 否 | 预留，暂未用于筛选 |
+
+### 错误
+
+非 `2xx` 或响应体无法按上述结构解析 → 客户端报错并显示「商店目录获取失败」。
+
+## 接口 2：下载并安装角色
+
+非 HTTP 接口，由前端将 `downloadUrl` 传给 Tauri 命令：
+
+```
+invoke('install_pet_from_url', { url: <downloadUrl> })
+```
+
+### 流程
+
+1. `GET {downloadUrl}`，非 `2xx` → 报错
+2. 下载到内存 → 解压到临时目录（`zip` crate，`enclosed_name` 拒绝 `../`、绝对路径等越界条目）
+3. 定位包根：zip 根目录内含 `pet.json`，或**唯一**顶层子目录内含 `pet.json`（两种布局均兼容）
+4. 复用本地导入校验：必填字段、`defaultState` / `capabilities.*` / `states.*.next` 指向、媒体文件存在、`format ∈ {gif}`、与内置 preset id 冲突拒绝
+5. 复制到 `{appDataDir}/pets/<id>/`（同 id 用户包直接覆盖）
+6. 清理临时目录
+
+### 返回
+
+成功：安装后的 `pet.json`（含注入的 `resourceDir`，指向 `appDataDir/pets/<id>`）。
+
+失败：错误字符串（下载失败 / 状态码异常 / 解压失败 / 校验失败）。
+
+## 角色包（zip）规范
+
+zip 内容与本地「导入角色」目录同构：
+
+```
+fern.zip
+├── pet.json        # v1 协议，见 README「pet.json（v1）」
+├── idle.gif
+├── sleep.gif
+└── preview.png     # 可选
+```
+
+## 后端对接清单
+
+- 提供 `GET /catalog`，返回上述结构
+- 提供 `items[].previewUrl` / `items[].downloadUrl` 可匿名访问的 HTTPS 直链
+- zip 按「角色包规范」打包
+- dev 起本地服务（默认 `localhost:8000`）；prod 在反代层将 `/catalog` 与 zip 直链转发到后端，无需配 CORS
+- 改 `.env.development` / `.env.production` 的 `VITE_SHOP_API_BASE` 指向实际地址 → `pnpm tauri dev` → 商店 Tab 显示真实清单 → 安装验证
+
+## 后续可扩展（当前未实现）
+
+- 分页 / 搜索 / 分类（`tags` 已预留字段位）
+- 版本更新检测：以 `version` 对比已装角色的 `pet.json.version`（当前协议无版本字段，需先扩展 `pet.json`）

@@ -31,11 +31,11 @@
       {
         "label": "preference",
         "title": "设置",
-        "url": "index.html#/preference",
+        "url": "index.html#/preference/pets",
         "visible": false,
-        "width": 520,
-        "height": 560,
-        "minWidth": 460,
+        "width": 680,
+        "height": 520,
+        "minWidth": 600,
         "minHeight": 480,
         "center": true
       }
