@@ -75,8 +75,8 @@ struct PetConfigRaw {
     id: String,
     name: String,
     format: String,
-    width: u32,
-    height: u32,
+    width: f64,
+    height: f64,
     default_state: String,
     #[serde(default)]
     preview: Option<String>,
@@ -116,7 +116,7 @@ fn validate_pet_config(config: &PetConfigRaw, from_dir: &Path) -> Result<(), Str
         ));
     }
 
-    if config.width == 0 || config.height == 0 {
+    if config.width <= 0.0 || config.height <= 0.0 {
         return Err("width/height 必须大于 0".into());
     }
 
@@ -308,8 +308,36 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100,
-            height: 100,
+            width: 100.0,
+            height: 100.0,
+            default_state: "sleep".into(),
+            preview: None,
+            capabilities: HashMap::new(),
+            states: HashMap::from([(
+                "sleep".into(),
+                PetStateConfigRaw {
+                    src: "sleep.gif".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        assert!(validate_pet_config(&config, &from_dir).is_ok());
+    }
+
+    #[test]
+    fn validation_accepts_huge_dimensions() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("sleep.gif"), b"gif").unwrap();
+
+        let config = PetConfigRaw {
+            id: "bigpet".into(),
+            name: "Big Pet".into(),
+            format: "gif".into(),
+            width: 20_000_000_000.0,
+            height: 20_000_000_000.0,
             default_state: "sleep".into(),
             preview: None,
             capabilities: HashMap::new(),
@@ -336,8 +364,8 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100,
-            height: 100,
+            width: 100.0,
+            height: 100.0,
             default_state: "idle".into(),
             preview: None,
             capabilities: HashMap::new(),
@@ -365,8 +393,8 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100,
-            height: 100,
+            width: 100.0,
+            height: 100.0,
             default_state: "sleep".into(),
             preview: None,
             capabilities: HashMap::new(),
@@ -395,8 +423,8 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100,
-            height: 100,
+            width: 100.0,
+            height: 100.0,
             default_state: "sleep".into(),
             preview: None,
             capabilities: HashMap::from([("click".into(), "nope".into())]),
@@ -425,8 +453,8 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100,
-            height: 100,
+            width: 100.0,
+            height: 100.0,
             default_state: "sleep".into(),
             preview: None,
             capabilities: HashMap::from([(
@@ -460,8 +488,8 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100,
-            height: 100,
+            width: 100.0,
+            height: 100.0,
             default_state: "sleep".into(),
             preview: None,
             capabilities: HashMap::from([(
@@ -494,8 +522,8 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100,
-            height: 100,
+            width: 100.0,
+            height: 100.0,
             default_state: "sleep".into(),
             preview: None,
             capabilities: HashMap::from([(

@@ -50,7 +50,7 @@ export function validatePetConfig(raw: Partial<PetConfig>, rootDir: string, expe
     throw new Error(`pet "${config.id}": 不支持的格式 "${String(config.format)}"`)
   }
 
-  if (!config.width || !config.height) {
+  if (!Number.isFinite(config.width) || config.width <= 0 || !Number.isFinite(config.height) || config.height <= 0) {
     throw new Error(`pet "${config.id}": width/height 必须大于 0`)
   }
 
