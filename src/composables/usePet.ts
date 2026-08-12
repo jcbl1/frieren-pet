@@ -2,7 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi'
 import { join } from '@tauri-apps/api/path'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { availableMonitors } from '@tauri-apps/api/window'
+import { availableMonitors, currentMonitor } from '@tauri-apps/api/window'
 import { computed, ref, watch } from 'vue'
 
 import { loadPetConfigById, loadPresetPetConfig, loadPresetPetIds } from '@/services/petConfig'
@@ -13,6 +13,9 @@ export type PetState = string
 
 const IDLE_SLEEP_DELAY = 60_000
 const DEFAULT_PET_ID = 'frieren'
+const BASE_SCREEN_RATIO = 0.25
+const MIN_DIM = 32
+const FALLBACK_DIM = 512
 
 let petConfigPromise: Promise<PetConfig> | null = null
 
@@ -213,6 +216,7 @@ let initialized = false
 let resizing = false
 let center: { x: number; y: number } | null = null
 let pollTimer: ReturnType<typeof setInterval> | undefined
+let lastScreenShortEdge: number | null = null
 
 export function saveCurrentPosition() {
   const appWindow = getCurrentWebviewWindow()
@@ -242,6 +246,15 @@ async function pollWindowFrame() {
     petStore.x = position.x
     petStore.y = position.y
   }
+
+  const monitor = await currentMonitor()
+  const shortEdge = monitor ? Math.min(monitor.size.width, monitor.size.height) : 0
+
+  if (shortEdge > 0 && lastScreenShortEdge != null && shortEdge !== lastScreenShortEdge) {
+    void resizeWindow()
+  }
+
+  lastScreenShortEdge = shortEdge
 }
 
 async function isPositionOnScreen(x: number, y: number) {
@@ -267,16 +280,28 @@ async function isPositionOnScreen(x: number, y: number) {
   }
 }
 
+async function resolveTargetSize(config: PetConfig) {
+  const petStore = usePetStore()
+  const scale = petStore.scale / 100
+  const monitor = await currentMonitor()
+  const shortEdge = monitor ? Math.min(monitor.size.width, monitor.size.height) : 0
+  const base = shortEdge > 0 ? shortEdge * BASE_SCREEN_RATIO : FALLBACK_DIM
+  const aspect = config.height > 0 ? config.width / config.height : 1
+  const maxW = monitor?.size.width ?? Number.POSITIVE_INFINITY
+  const maxH = monitor?.size.height ?? Number.POSITIVE_INFINITY
+
+  return new PhysicalSize({
+    width: Math.max(MIN_DIM, Math.min(Math.round(base * scale * aspect), maxW)),
+    height: Math.max(MIN_DIM, Math.min(Math.round(base * scale), maxH)),
+  })
+}
+
 async function doResize() {
   const config = await ensurePetConfig()
   const petStore = usePetStore()
   const appWindow = getCurrentWebviewWindow()
-  const scale = petStore.scale / 100
 
-  const target = new PhysicalSize({
-    width: Math.round(config.width * scale),
-    height: Math.round(config.height * scale),
-  })
+  const target = await resolveTargetSize(config)
 
   const savedX = petStore.x
   const savedY = petStore.y

@@ -15,7 +15,7 @@ export interface PetStoreState {
 export const usePetStore = defineStore('pet', {
   state: (): PetStoreState => ({
     currentPetId: 'frieren',
-    scale: 60,
+    scale: 100,
     alwaysOnTop: true,
     opacity: 100,
     passThrough: false,
