@@ -374,7 +374,17 @@ export function usePet() {
 
   watch(
     () => [petStore.idleEnabled, petStore.idleAfterMs] as const,
-    () => {
+    async ([idleEnabled]) => {
+      if (!idleEnabled) {
+        const config = await ensurePetConfig()
+        const idleTarget = config.capabilities?.['idle']
+        const idleState = typeof idleTarget === 'string' ? idleTarget : idleTarget?.state
+
+        if (idleState && currentState.value === idleState) {
+          await setState(config.defaultState)
+        }
+      }
+
       void wake()
     },
   )
