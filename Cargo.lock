@@ -1129,6 +1129,7 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-pinia",
  "tauri-plugin-single-instance",
+ "windows",
  "zip",
 ]
 

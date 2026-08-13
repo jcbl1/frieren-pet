@@ -4,6 +4,9 @@ mod common;
 #[cfg(target_os = "macos")]
 mod macos;
 
+#[cfg(target_os = "windows")]
+mod windows;
+
 use tauri::{
     App, AppHandle, Emitter, Manager, Wry,
     image::Image,
@@ -35,6 +38,9 @@ pub fn default(app: &App<Wry>) -> tauri::Result<()> {
 
     #[cfg(target_os = "macos")]
     macos::setup(app);
+
+    #[cfg(target_os = "windows")]
+    windows::setup(app);
 
     #[cfg(not(target_os = "macos"))]
     common::setup(app);
