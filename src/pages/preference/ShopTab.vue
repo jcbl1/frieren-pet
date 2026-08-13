@@ -144,23 +144,23 @@ async function handleInstall(item: ShopItem) {
   margin: 0 0 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 
 .group-action {
   margin-bottom: 8px;
   padding: 4px 10px;
-  border: 1px solid #7c9a7c;
+  border: 1px solid var(--accent);
   border-radius: 6px;
-  background: #ffffff;
-  color: #7c9a7c;
+  background: var(--bg-surface);
+  color: var(--accent);
   font-size: 12px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .group-action:hover {
-  background: #7c9a7c;
+  background: var(--accent);
   color: #ffffff;
 }
 
@@ -173,14 +173,14 @@ async function handleInstall(item: ShopItem) {
   margin: 0 0 10px;
   padding: 6px 10px;
   border-radius: 6px;
-  background: #eef4ee;
-  color: #5a7a5a;
+  background: var(--bg-soft);
+  color: var(--accent-text);
   font-size: 12px;
 }
 
 .shop-status.error {
-  background: #fbecec;
-  color: #b05050;
+  background: var(--bg-danger);
+  color: var(--text-danger);
 }
 
 .shop-grid {
@@ -194,15 +194,15 @@ async function handleInstall(item: ShopItem) {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid #e6e6e6;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--bg-surface);
 }
 
 .shop-card--placeholder {
   justify-content: center;
   align-items: center;
-  color: #8a8a8a;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -217,7 +217,7 @@ async function handleInstall(item: ShopItem) {
   height: 48px;
   border-radius: 8px;
   object-fit: contain;
-  background: #f2f2f2;
+  background: var(--bg-sidebar);
 }
 
 .shop-meta {
@@ -230,19 +230,19 @@ async function handleInstall(item: ShopItem) {
 .shop-name {
   font-size: 14px;
   font-weight: 600;
-  color: #2d2d2d;
+  color: var(--text-primary);
 }
 
 .shop-version {
   font-size: 11px;
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 
 .shop-desc {
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: #6b6b6b;
+  color: var(--text-secondary);
 }
 
 .shop-foot {
@@ -257,7 +257,7 @@ async function handleInstall(item: ShopItem) {
   min-width: 0;
   overflow: hidden;
   font-size: 11px;
-  color: #8a8a8a;
+  color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -265,15 +265,15 @@ async function handleInstall(item: ShopItem) {
 .shop-size {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 
 .shop-install {
   flex-shrink: 0;
   padding: 4px 12px;
-  border: 1px solid #7c9a7c;
+  border: 1px solid var(--accent);
   border-radius: 6px;
-  background: #7c9a7c;
+  background: var(--accent);
   color: #ffffff;
   font-size: 12px;
   cursor: pointer;
@@ -281,13 +281,13 @@ async function handleInstall(item: ShopItem) {
 }
 
 .shop-install:hover {
-  background: #6b8a6b;
+  background: var(--accent-hover);
 }
 
 .shop-install:disabled {
-  border-color: #d0d0d0;
-  background: #e6e6e6;
-  color: #8a8a8a;
+  border-color: var(--border);
+  background: var(--bg-hover);
+  color: var(--text-muted);
   cursor: default;
 }
 </style>

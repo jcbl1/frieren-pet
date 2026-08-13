@@ -4,6 +4,7 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { onMounted, onBeforeUnmount } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
+import { useTheme } from '@/composables/useTheme'
 import { usePetStore } from '@/stores/pet'
 
 const appWindow = getCurrentWebviewWindow()
@@ -15,11 +16,14 @@ function isTauri() {
 }
 
 let unlistenShop: (() => void) | undefined
+let unlistenTheme: (() => void) | undefined
 
 onMounted(async () => {
   if (appWindow.label === 'preference') {
     document.body.classList.add('preference')
   }
+
+  unlistenTheme = useTheme(() => petStore.theme)
 
   if (!isTauri()) return
 
@@ -38,6 +42,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   unlistenShop?.()
+  unlistenTheme?.()
 })
 </script>
 

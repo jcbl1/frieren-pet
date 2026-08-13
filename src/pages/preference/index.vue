@@ -43,8 +43,8 @@ const activeTab = computed(() => {
 .preference-root {
   display: flex;
   height: 100%;
-  background: #fafafa;
-  color: #2d2d2d;
+  background: var(--bg);
+  color: var(--text-primary);
 }
 
 .sidebar {
@@ -54,8 +54,8 @@ const activeTab = computed(() => {
   flex-shrink: 0;
   width: 168px;
   padding: 12px 8px;
-  border-right: 1px solid #e6e6e6;
-  background: #f2f2f2;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sidebar);
 }
 
 .tab {
@@ -65,19 +65,19 @@ const activeTab = computed(() => {
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 13px;
-  color: #4a4a4a;
+  color: var(--text-secondary);
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .tab:hover {
-  background: #e6e6e6;
+  background: var(--bg-hover);
 }
 
 .tab.active {
-  background: #ffffff;
-  color: #2d2d2d;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+  background: var(--bg-active);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px var(--shadow);
 }
 
 .tab-icon {

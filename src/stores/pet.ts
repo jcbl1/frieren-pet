@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 
+export type ThemeMode = 'light' | 'dark' | 'auto'
+
 export interface PetStoreState {
   currentPetId: string | null
   scale: number
@@ -10,6 +12,7 @@ export interface PetStoreState {
   idleAfterMs: number | null
   x: number | null
   y: number | null
+  theme: ThemeMode
 }
 
 export const usePetStore = defineStore('pet', {
@@ -23,5 +26,6 @@ export const usePetStore = defineStore('pet', {
     idleAfterMs: null,
     x: null,
     y: null,
+    theme: 'auto',
   }),
 })

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import { usePetStore } from '@/stores/pet'
+import type { ThemeMode } from '@/stores/pet'
 
 const petStore = usePetStore()
 
@@ -11,9 +12,41 @@ const idleSeconds = computed({
     petStore.idleAfterMs = value * 1000
   },
 })
+
+const themeOptions: { value: ThemeMode; label: string }[] = [
+  { value: 'light', label: '浅色' },
+  { value: 'dark', label: '深色' },
+  { value: 'auto', label: '自动' },
+]
 </script>
 
 <template>
+  <section class="group">
+    <h2 class="group-title">外观</h2>
+
+    <div class="row">
+      <div class="row-text">
+        <span class="row-label">主题</span>
+        <span class="row-desc">自动跟随系统深浅色</span>
+      </div>
+
+      <div class="segmented" role="radiogroup">
+        <button
+          v-for="option in themeOptions"
+          :key="option.value"
+          class="segment"
+          :class="{ active: petStore.theme === option.value }"
+          type="button"
+          role="radio"
+          :aria-checked="petStore.theme === option.value"
+          @click="petStore.theme = option.value"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+    </div>
+  </section>
+
   <section class="group">
     <h2 class="group-title">窗口</h2>
 
@@ -129,7 +162,7 @@ const idleSeconds = computed({
   margin: 0 0 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 
 .group:not(:first-child) .group-title {
@@ -141,7 +174,7 @@ const idleSeconds = computed({
   align-items: center;
   gap: 12px;
   padding: 10px 4px;
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .row:last-child {
@@ -162,7 +195,7 @@ const idleSeconds = computed({
 
 .row-desc {
   font-size: 12px;
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 
 .value {
@@ -170,12 +203,41 @@ const idleSeconds = computed({
   text-align: right;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  color: #6b6b6b;
+  color: var(--text-secondary);
 }
 
 .range {
   width: 160px;
-  accent-color: #7c9a7c;
+  accent-color: var(--accent);
+}
+
+.segmented {
+  display: flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--bg-hover);
+}
+
+.segment {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segment:hover {
+  color: var(--text-primary);
+}
+
+.segment.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px var(--shadow);
 }
 
 .switch {
@@ -186,13 +248,13 @@ const idleSeconds = computed({
   padding: 0;
   border: none;
   border-radius: 999px;
-  background: #d0d0d0;
+  background: var(--border);
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .switch.on {
-  background: #7c9a7c;
+  background: var(--accent);
 }
 
 .knob {
@@ -202,8 +264,8 @@ const idleSeconds = computed({
   width: 20px;
   height: 20px;
   border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  background: var(--bg-surface);
+  box-shadow: 0 1px 2px var(--shadow-strong);
   transition: transform 0.15s ease;
 }
 

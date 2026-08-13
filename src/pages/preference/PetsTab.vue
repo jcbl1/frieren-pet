@@ -149,23 +149,23 @@ async function handleDelete(pet: PetEntry) {
   margin: 0 0 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 
 .group-action {
   margin-bottom: 8px;
   padding: 4px 10px;
-  border: 1px solid #7c9a7c;
+  border: 1px solid var(--accent);
   border-radius: 6px;
-  background: #ffffff;
-  color: #7c9a7c;
+  background: var(--bg-surface);
+  color: var(--accent);
   font-size: 12px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .group-action:hover {
-  background: #7c9a7c;
+  background: var(--accent);
   color: #ffffff;
 }
 
@@ -173,14 +173,14 @@ async function handleDelete(pet: PetEntry) {
   margin: 0 0 10px;
   padding: 6px 10px;
   border-radius: 6px;
-  background: #eef4ee;
-  color: #5a7a5a;
+  background: var(--bg-soft);
+  color: var(--accent-text);
   font-size: 12px;
 }
 
 .pet-status.error {
-  background: #fbecec;
-  color: #b05050;
+  background: var(--bg-danger);
+  color: var(--text-danger);
 }
 
 .pet-grid {
@@ -196,25 +196,25 @@ async function handleDelete(pet: PetEntry) {
   align-items: center;
   gap: 6px;
   padding: 10px 8px;
-  border: 1px solid #e6e6e6;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--bg-surface);
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .pet-card:hover {
-  border-color: #b8ccb8;
+  border-color: var(--accent-soft);
 }
 
 .pet-card.active {
-  border-color: #7c9a7c;
-  box-shadow: 0 0 0 1px #7c9a7c;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .pet-card--placeholder {
   justify-content: center;
-  color: #8a8a8a;
+  color: var(--text-muted);
   font-size: 12px;
   cursor: default;
 }
@@ -228,7 +228,7 @@ async function handleDelete(pet: PetEntry) {
 
 .pet-name {
   font-size: 12px;
-  color: #2d2d2d;
+  color: var(--text-primary);
   text-align: center;
 }
 
@@ -238,7 +238,7 @@ async function handleDelete(pet: PetEntry) {
   right: 6px;
   padding: 1px 5px;
   border-radius: 4px;
-  background: #7c9a7c;
+  background: var(--accent);
   color: #ffffff;
   font-size: 10px;
 }
@@ -248,12 +248,12 @@ async function handleDelete(pet: PetEntry) {
   padding: 0;
   border: none;
   background: transparent;
-  color: #b0b0b0;
+  color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
 }
 
 .pet-delete:hover {
-  color: #d06565;
+  color: var(--text-danger);
 }
 </style>

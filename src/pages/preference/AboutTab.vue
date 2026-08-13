@@ -34,7 +34,7 @@ onMounted(async () => {
   margin: 0 0 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 
 .row {
@@ -42,7 +42,7 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   padding: 10px 4px;
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .row:last-child {
@@ -58,7 +58,7 @@ onMounted(async () => {
   text-align: right;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  color: #6b6b6b;
+  color: var(--text-secondary);
 }
 
 .row.static {
