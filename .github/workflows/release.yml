@@ -56,6 +56,17 @@ jobs:
       - name: Sync version from tag
         run: node scripts/sync-version.mjs "${{ github.ref_name }}"
 
+      - name: Inject shop API base URL
+        shell: bash
+        env:
+          SHOP_API_BASE: ${{ secrets.SHOP_API_BASE }}
+        run: |
+          if [ -z "$SHOP_API_BASE" ]; then
+            echo "::error::Secret SHOP_API_BASE is not set; add it in repo Settings > Secrets to enable the shop backend."
+            exit 1
+          fi
+          echo "VITE_SHOP_API_BASE=$SHOP_API_BASE" > .env.production.local
+
       - name: Build and publish
         uses: tauri-apps/tauri-action@v1
         env:
