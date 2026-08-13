@@ -54,7 +54,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Sync version from tag
-        run: node scripts/sync-version.mjs "${GITHUB_REF_NAME#v}"
+        run: node scripts/sync-version.mjs "${{ github.ref_name }}"
 
       - name: Build and publish
         uses: tauri-apps/tauri-action@v1
