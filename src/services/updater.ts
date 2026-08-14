@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
+import { relaunch } from '@tauri-apps/plugin-process'
+import { check as checkPluginUpdate } from '@tauri-apps/plugin-updater'
 
 import type { NoticeContent, UpdateInfo } from '@/types/update'
 import { isTauri } from '@/services/notification'
@@ -20,18 +22,38 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
   return (await invoke('check_for_update')) as UpdateInfo | null
 }
 
-export async function downloadAndOpen(url: string): Promise<string> {
+export async function installUpdate(
+  onProgress?: (downloaded: number, contentLength: number | undefined) => void,
+): Promise<void> {
   if (!isTauri()) {
-    throw new Error('浏览器预览模式不支持下载安装包')
+    throw new Error('浏览器预览模式不支持自动更新')
   }
 
-  const path = (await invoke('download_release_asset', { url })) as string
+  const update = await checkPluginUpdate()
 
-  const { openPath } = await import('@tauri-apps/plugin-opener')
+  if (!update) {
+    throw new Error('未找到可用的更新')
+  }
 
-  await openPath(path)
+  let downloaded = 0
+  let contentLength: number | undefined
 
-  return path
+  await update.downloadAndInstall((event) => {
+    switch (event.event) {
+      case 'Started':
+        contentLength = event.data.contentLength
+
+        break
+      case 'Progress':
+        downloaded += event.data.chunkLength
+
+        onProgress?.(downloaded, contentLength)
+
+        break
+    }
+  })
+
+  await relaunch()
 }
 
 export async function openReleasePage(url: string): Promise<void> {
@@ -49,9 +71,7 @@ export async function openReleasePage(url: string): Promise<void> {
 export function updateToNotice(info: UpdateInfo): NoticeContent {
   const actions: NoticeContent['actions'] = []
 
-  if (info.downloadUrl) {
-    actions.push({ label: '下载并打开', kind: 'download', url: info.downloadUrl })
-  }
+  actions.push({ label: '下载并安装', kind: 'download', url: info.downloadUrl ?? info.releaseUrl })
 
   actions.push({ label: '在浏览器打开', kind: 'open-url', url: info.releaseUrl })
 

@@ -49,6 +49,7 @@
 | `theme` | `"auto"` | 主题：`light` / `dark` / `auto` |
 | `autoCheckUpdates` | true | 自动检查更新 |
 | `systemNotifications` | true | 系统通知开关（公告等） |
+| `launchAtStartup` | false | 开机自启（`tauri-plugin-autostart`） |
 | `x` / `y` | null | 窗口位置（物理像素），null = 从未保存 |
 
 规则：

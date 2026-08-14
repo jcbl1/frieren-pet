@@ -6,7 +6,7 @@ use tauri::Manager;
 use utils::notices::fetch_notices;
 use utils::pet_download::{fetch_shop_catalog, install_pet_from_url};
 use utils::pet_import::{delete_pet, import_pet};
-use utils::updater::{check_for_update, download_release_asset};
+use utils::updater::check_for_update;
 
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
@@ -19,6 +19,12 @@ pub fn run() {
         .setup(|app| {
             setup::default(app)?;
 
+            #[cfg(desktop)]
+            let _ = app.handle().plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                None,
+            ));
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -28,7 +34,6 @@ pub fn run() {
             fetch_shop_catalog,
             install_pet_from_url,
             check_for_update,
-            download_release_asset,
             fetch_notices
         ])
         .plugin(tauri_plugin_fs::init())
@@ -36,6 +41,8 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_pinia::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("preference") {
                 let _ = window.show();

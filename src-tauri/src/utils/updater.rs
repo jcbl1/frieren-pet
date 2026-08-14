@@ -1,8 +1,5 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 const LATEST_RELEASE_URL: &str =
     "https://api.github.com/repos/jcbl1/frieren-pet/releases/latest";
@@ -173,80 +170,6 @@ pub async fn check_for_update(app: AppHandle) -> Result<Option<UpdateInfo>, Stri
     }))
 }
 
-fn safe_download_path(dir: &Path, file_name: &str) -> PathBuf {
-    let sanitized: String = file_name
-        .chars()
-        .map(|ch| {
-            if ch.is_ascii_alphanumeric() || ch == '.' || ch == '-' || ch == '_' {
-                ch
-            } else {
-                '_'
-            }
-        })
-        .collect();
-
-    let mut candidate = dir.join(&sanitized);
-    let mut counter = 1;
-
-    while candidate.exists() {
-        let (stem, extension) = match sanitized.rsplit_once('.') {
-            Some((stem, extension)) => (stem, extension),
-            None => (sanitized.as_str(), ""),
-        };
-
-        let name = if extension.is_empty() {
-            format!("{stem} ({counter})")
-        } else {
-            format!("{stem} ({counter}).{extension}")
-        };
-
-        candidate = dir.join(name);
-        counter += 1;
-    }
-
-    candidate
-}
-
-#[tauri::command]
-pub async fn download_release_asset(app: AppHandle, url: String) -> Result<String, String> {
-    let client = reqwest::Client::builder()
-        .user_agent(format!("frieren-pet/{}", app.package_info().version))
-        .build()
-        .map_err(|err| format!("初始化下载客户端失败: {err}"))?;
-
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|err| format!("下载安装包失败: {err}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!("下载安装包返回异常状态: {}", response.status()));
-    }
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|err| format!("读取下载内容失败: {err}"))?;
-
-    let file_name = url
-        .rsplit('/')
-        .find(|segment| !segment.is_empty())
-        .unwrap_or("frieren-pet-update")
-        .to_string();
-
-    let download_dir = app
-        .path()
-        .download_dir()
-        .map_err(|err| format!("获取下载目录失败: {err}"))?;
-
-    let target = safe_download_path(&download_dir, &file_name);
-
-    fs::write(&target, &bytes).map_err(|err| format!("保存安装包失败: {err}"))?;
-
-    Ok(target.to_string_lossy().into_owned())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -313,26 +236,5 @@ mod tests {
         }];
 
         assert!(pick_asset_with(&assets, &["dmg", "msi"], "x86_64").is_none());
-    }
-
-    #[test]
-    fn download_path_avoids_collision() {
-        let dir = std::env::temp_dir().join(format!(
-            "frieren-pet-updater-test-{}",
-            std::process::id()
-        ));
-
-        fs::create_dir_all(&dir).unwrap();
-
-        let first = safe_download_path(&dir, "FrierenPet_1.0.0_aarch64.dmg");
-
-        fs::write(&first, b"x").unwrap();
-
-        let second = safe_download_path(&dir, "FrierenPet_1.0.0_aarch64.dmg");
-
-        assert_ne!(first, second);
-        assert!(second.ends_with("FrierenPet_1.0.0_aarch64 (1).dmg"));
-
-        let _ = fs::remove_dir_all(&dir);
     }
 }

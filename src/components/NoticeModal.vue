@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 
 import { useNoticeModal } from '@/composables/useNoticeModal'
-import { downloadAndOpen, openReleasePage } from '@/services/updater'
+import { installUpdate, openReleasePage } from '@/services/updater'
 import type { NoticeAction } from '@/types/update'
 
 const { visible, current, close } = useNoticeModal()
@@ -11,6 +11,7 @@ type DownloadState = 'idle' | 'downloading' | 'done' | 'error'
 
 const downloadState = ref<DownloadState>('idle')
 const downloadMessage = ref('')
+const downloadPercent = ref(0)
 
 const badge = computed(() => (current.value?.kind === 'update' ? '更新' : '公告'))
 
@@ -31,19 +32,24 @@ async function handleAction(action: NoticeAction) {
     return
   }
 
-  if (action.kind === 'download' && action.url) {
+  if (action.kind === 'download') {
     downloadState.value = 'downloading'
     downloadMessage.value = ''
+    downloadPercent.value = 0
 
     try {
-      await downloadAndOpen(action.url)
+      await installUpdate((downloaded, contentLength) => {
+        if (contentLength && contentLength > 0) {
+          downloadPercent.value = Math.min(100, Math.round((downloaded / contentLength) * 100))
+        }
+      })
 
       downloadState.value = 'done'
-      downloadMessage.value = '安装包已下载并打开'
+      downloadMessage.value = '更新完成，正在重启…'
     } catch (error) {
       downloadState.value = 'error'
       downloadMessage.value = String(error)
-      console.error('[frieren-pet] download failed:', error)
+      console.error('[frieren-pet] install update failed:', error)
     }
   }
 }
@@ -52,6 +58,7 @@ function handleClose() {
   close()
   downloadState.value = 'idle'
   downloadMessage.value = ''
+  downloadPercent.value = 0
 }
 </script>
 
@@ -73,6 +80,10 @@ function handleClose() {
 
           <p v-if="downloadMessage" class="modal-feedback">{{ downloadMessage }}</p>
 
+          <p v-if="downloadState === 'downloading' && downloadPercent > 0" class="modal-feedback">
+            已下载 {{ downloadPercent }}%
+          </p>
+
           <footer v-if="current.actions?.length" class="modal-footer">
             <button
               v-for="action in current.actions"
@@ -83,7 +94,7 @@ function handleClose() {
               type="button"
               @click="handleAction(action)"
             >
-              {{ action.kind === 'download' && downloadState === 'downloading' ? '下载中…' : action.label }}
+              {{ action.kind === 'download' && downloadState === 'downloading' ? `下载中…${downloadPercent > 0 ? ` ${downloadPercent}%` : ''}` : action.label }}
             </button>
           </footer>
         </div>

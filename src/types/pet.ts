@@ -23,6 +23,7 @@ export interface PetConfig {
   width: number
   height: number
   defaultState: string
+  version?: string
   preview?: string
   capabilities?: PetCapabilities
   states: Record<string, PetStateConfig>

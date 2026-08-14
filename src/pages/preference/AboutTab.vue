@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enable as enableAutostart, disable as disableAutostart, isEnabled } from '@tauri-apps/plugin-autostart'
 import { getName, getVersion } from '@tauri-apps/api/app'
 import { onMounted, ref } from 'vue'
 
@@ -16,12 +17,44 @@ const checkMessage = ref('')
 const petStore = usePetStore()
 const { open } = useNoticeModal()
 
+function isTauri() {
+  return '__TAURI_INTERNALS__' in window
+}
+
 onMounted(async () => {
   const [name, version] = await Promise.all([getName(), getVersion()])
 
   appName.value = name
   appVersion.value = version
+
+  if (isTauri()) {
+    try {
+      petStore.launchAtStartup = await isEnabled()
+    } catch (error) {
+      console.error('[frieren-pet] autostart: read state failed:', error)
+    }
+  }
 })
+
+async function toggleLaunchAtStartup() {
+  const next = !petStore.launchAtStartup
+
+  petStore.launchAtStartup = next
+
+  if (!isTauri()) return
+
+  try {
+    if (next) {
+      await enableAutostart()
+    } else {
+      await disableAutostart()
+    }
+  } catch (error) {
+    console.error('[frieren-pet] autostart: toggle failed:', error)
+
+    petStore.launchAtStartup = !next
+  }
+}
 
 async function handleCheckUpdate() {
   if (checking.value) return
@@ -50,6 +83,28 @@ async function handleCheckUpdate() {
 </script>
 
 <template>
+  <section class="group">
+    <h2 class="group-title">启动</h2>
+
+    <div class="row">
+      <div class="row-text">
+        <span class="row-label">开机自启</span>
+        <span class="row-desc">登录系统时自动启动桌宠</span>
+      </div>
+
+      <button
+        class="switch"
+        :class="{ on: petStore.launchAtStartup }"
+        type="button"
+        role="switch"
+        :aria-checked="petStore.launchAtStartup"
+        @click="toggleLaunchAtStartup"
+      >
+        <span class="knob" />
+      </button>
+    </div>
+  </section>
+
   <section class="group">
     <h2 class="group-title">更新</h2>
 
