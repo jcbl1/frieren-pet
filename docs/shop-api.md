@@ -1,6 +1,6 @@
 # 商店接口设计
 
-远程角色商店（`feat/shop-remote-store`）客户端契约。后端按本文档实现即可与客户端对接。
+远程角色商店客户端契约。后端按本文档实现即可与客户端对接。
 
 ## 概述
 
@@ -24,11 +24,13 @@
 ### 环境配置（dev / prod 不同后端）
 
 | 环境 | 文件 | 值 |
-|------|------|-----|
-| dev（`pnpm tauri dev`） | `.env.development` | `VITE_SHOP_API_BASE=http://localhost:8000`（本地直连） |
-| prod（`pnpm tauri build`） | `.env.production` | `VITE_SHOP_API_BASE=https://shop.example.com`（反代入口） |
+|------|------|------|
+| dev（`pnpm tauri dev`） | `.env.development` | `VITE_SHOP_API_BASE=http://localhost:8080` |
+| dev 覆盖 | `.env.development.local`（gitignored） | 联调其它后端时改这里 |
+| prod（`pnpm tauri build`） | `.env.production.local` | CI 从 `SHOP_API_BASE` secret 注入；本地用 `SHOP_API_BASE=… pnpm prepare:env` 生成 |
 
-`import.meta.env.DEV` 由 Vite 构建模式驱动：dev = `vite`，prod = `vite build`。本地私密覆盖可写 `.env.local`（已 gitignore）。
+提交的 `.env.production` 只是占位符（`https://shop.example.com`），真实地址必须走 `.env.production.local`。
+`import.meta.env.DEV` 由 Vite 构建模式驱动：dev = `vite`，prod = `vite build`。
 
 ## 字段命名
 
@@ -170,7 +172,7 @@ zip 内容与本地「导入角色」目录同构：
 
 ```
 fern.zip
-├── pet.json        # v1 协议，见 README「pet.json（v1）」
+├── pet.json        # v1 协议，见 docs/pet-format.md
 ├── idle.gif
 ├── sleep.gif
 └── preview.png     # 可选
@@ -183,7 +185,8 @@ fern.zip
 - 提供 `items[].previewUrl` / `items[].downloadUrl` 可匿名访问的 HTTPS 直链
 - zip 按「角色包规范」打包
 - dev 起本地服务（默认 `localhost:8000`）；prod 在反代层将 `/catalog`、`/notices` 与 zip 直链转发到后端，无需配 CORS
-- 改 `.env.development` / `.env.production` 的 `VITE_SHOP_API_BASE` 指向实际地址 → `pnpm tauri dev` → 商店 Tab 显示真实清单 → 安装验证
+- 配置 `VITE_SHOP_API_BASE`（dev 改 `.env.development.local`；prod 走 `SHOP_API_BASE=… pnpm prepare:env`）
+  → `pnpm tauri dev` → 商店 Tab 显示真实清单 → 安装验证
 
 ## 后续可扩展（当前未实现）
 
