@@ -1,21 +1,71 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { usePetStore } from '@/stores/pet'
-import { dequeueNotice, dismissNotice } from '@/services/notice'
+import { dismissNotice } from '@/services/notice'
 import { useNoticeModal } from '@/composables/useNoticeModal'
+
+const ROTATE_INTERVAL = 4000
 
 const petStore = usePetStore()
 const { open } = useNoticeModal()
 
-const notice = computed(() => petStore.pendingNotices[0] ?? null)
+const index = ref(0)
+const hovered = ref(false)
+
+const notice = computed(() => petStore.pendingNotices[index.value] ?? null)
+const count = computed(() => petStore.pendingNotices.length)
+
+let rotateTimer: number | undefined
+
+function startRotate() {
+  if (rotateTimer !== undefined) return
+
+  rotateTimer = window.setInterval(() => {
+    if (hovered.value) return
+    if (petStore.pendingNotices.length < 2) return
+
+    index.value = (index.value + 1) % petStore.pendingNotices.length
+  }, ROTATE_INTERVAL)
+}
+
+function stopRotate() {
+  if (rotateTimer !== undefined) {
+    window.clearInterval(rotateTimer)
+    rotateTimer = undefined
+  }
+}
+
+watch(
+  () => petStore.pendingNotices.length,
+  (length) => {
+    if (length === 0) {
+      index.value = 0
+      stopRotate()
+
+      return
+    }
+
+    if (index.value >= length) {
+      index.value = length - 1
+    }
+
+    if (length >= 2) {
+      startRotate()
+    } else {
+      stopRotate()
+    }
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(stopRotate)
 
 function handleOpen() {
   const current = notice.value
 
   if (!current) return
 
-  dequeueNotice(current.id)
   open(current)
 }
 
@@ -26,12 +76,39 @@ function handleDismiss() {
 
 <template>
   <Transition name="banner">
-    <div v-if="notice" class="banner" role="button" tabindex="0" @click="handleOpen" @keydown.enter="handleOpen">
+    <div
+      v-if="notice"
+      class="banner"
+      role="button"
+      tabindex="0"
+      @click="handleOpen"
+      @keydown.enter="handleOpen"
+      @mouseenter="hovered = true"
+      @mouseleave="hovered = false"
+    >
       <span class="banner-dot" />
-      <div class="banner-text">
-        <span class="banner-title">{{ notice.title }}</span>
-        <span v-if="notice.subtitle" class="banner-subtitle">{{ notice.subtitle }}</span>
+
+      <div class="banner-content">
+        <Transition name="banner-switch" mode="out-in">
+          <div :key="notice.id" class="banner-text">
+            <span class="banner-title">{{ notice.title }}</span>
+            <span v-if="notice.subtitle" class="banner-subtitle">{{ notice.subtitle }}</span>
+          </div>
+        </Transition>
+
+        <div v-if="count >= 2" class="banner-dots">
+          <button
+            v-for="(item, itemIndex) in petStore.pendingNotices"
+            :key="item.id"
+            class="banner-dot-indicator"
+            :class="{ active: itemIndex === index }"
+            type="button"
+            :aria-label="`第 ${itemIndex + 1} 条公告`"
+            @click.stop="index = itemIndex"
+          />
+        </div>
       </div>
+
       <button class="banner-close" type="button" aria-label="关闭" @click.stop="handleDismiss">×</button>
     </div>
   </Transition>
@@ -64,11 +141,20 @@ function handleDismiss() {
   background: var(--accent);
 }
 
-.banner-text {
+.banner-content {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.banner-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   gap: 2px;
+  min-height: 36px;
   min-width: 0;
 }
 
@@ -79,6 +165,7 @@ function handleDismiss() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 18px;
 }
 
 .banner-subtitle {
@@ -87,6 +174,34 @@ function handleDismiss() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 16px;
+}
+
+.banner-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.banner-dot-indicator {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 1px solid var(--text-muted);
+  border-radius: 999px;
+  background: transparent;
+  opacity: 0.6;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.banner-dot-indicator:hover {
+  opacity: 1;
+}
+
+.banner-dot-indicator.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  opacity: 1;
 }
 
 .banner-close {
@@ -118,4 +233,20 @@ function handleDismiss() {
   opacity: 0;
   transform: translateY(-6px);
 }
+
+.banner-switch-enter-active,
+.banner-switch-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.banner-switch-enter-from {
+  opacity: 0;
+  transform: translateX(8px);
+}
+
+.banner-switch-leave-to {
+  opacity: 0;
+  transform: translateX(-8px);
+}
 </style>
+
