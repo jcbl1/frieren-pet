@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 
+import NoticeModal from '@/components/NoticeModal.vue'
+import UpdateBanner from '@/components/UpdateBanner.vue'
+
 const tabs = [
   { name: 'pets', label: '角色', icon: '👤' },
   { name: 'shop', label: '商店', icon: '🛒' },
@@ -20,31 +23,44 @@ const activeTab = computed(() => {
 
 <template>
   <div class="preference-root">
-    <nav class="sidebar">
-      <RouterLink
-        v-for="tab in tabs"
-        :key="tab.name"
-        class="tab"
-        :class="{ active: activeTab === tab.name }"
-        :to="`/preference/${tab.name}`"
-      >
-        <span class="tab-icon">{{ tab.icon }}</span>
-        <span class="tab-label">{{ tab.label }}</span>
-      </RouterLink>
-    </nav>
+    <div class="preference-body">
+      <nav class="sidebar">
+        <RouterLink
+          v-for="tab in tabs"
+          :key="tab.name"
+          class="tab"
+          :class="{ active: activeTab === tab.name }"
+          :to="`/preference/${tab.name}`"
+        >
+          <span class="tab-icon">{{ tab.icon }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
+        </RouterLink>
+      </nav>
 
-    <main class="content">
-      <RouterView />
-    </main>
+      <main class="content">
+        <UpdateBanner />
+
+        <RouterView />
+      </main>
+    </div>
+
+    <NoticeModal />
   </div>
 </template>
 
 <style scoped>
 .preference-root {
   display: flex;
+  flex-direction: column;
   height: 100%;
   background: var(--bg);
   color: var(--text-primary);
+}
+
+.preference-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
 }
 
 .sidebar {

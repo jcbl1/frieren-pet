@@ -11,6 +11,10 @@
   ├─ loadShopCatalog()  ── invoke ──> fetch_shop_catalog  ── GET {base}/catalog
   └─ 点击「安装」 ─────── invoke ──> install_pet_from_url ── GET {downloadUrl}（zip）
                                        → 解压 → 校验 → appDataDir/pets/<id>/
+
+公告推送（方案 A：轮询）
+  └─ pollAndPushNotices() ── invoke ──> fetch_notices ──── GET {base}/notices（启动后 10s + 每 30min）
+                                       → 新公告 → pushNotice() → 原生通知 + 设置窗口横幅 + 详情弹窗
 ```
 
 - 前端 `SHOP_API_BASE` 常量：`src/services/petShop.ts`，读取 `VITE_SHOP_API_BASE`（Vite 环境变量，见下「环境配置」）
@@ -77,7 +81,67 @@ GET {base}/catalog
 
 非 `2xx` 或响应体无法按上述结构解析 → 客户端报错并显示「商店目录获取失败」。
 
-## 接口 2：下载并安装角色
+## 接口 2：获取公告列表（服务端推送）
+
+客户端以**轮询**方式拉取服务端下发的公告/活动/更新说明。轮询周期 30 分钟，启动后 10s 首次拉取；仅在「自动检查更新」开启时执行。
+
+```
+GET {base}/notices
+```
+
+### 响应
+
+`200 OK`
+
+```json
+{
+  "items": [
+    {
+      "id": "activity-summer-2026",
+      "kind": "activity",
+      "title": "夏日限时活动",
+      "subtitle": "活动说明",
+      "body": "即日起至 8 月底，安装任意商店角色可解锁隐藏彩蛋。",
+      "publishedAt": "2026-08-14T00:00:00Z",
+      "actions": [
+        { "label": "去商店看看", "kind": "open-url", "url": "https://shop.example.com" }
+      ]
+    }
+  ]
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `items` | `array` | 是 | 公告列表，可为空数组 |
+| `items[].id` | `string` | 是 | 公告唯一 id；客户端以它去重，重复返回同一 id 不会重复提醒 |
+| `items[].kind` | `string` | 是 | 类型：`update`（版本更新）/ `announcement`（公告）/ `activity`（活动） |
+| `items[].title` | `string` | 是 | 标题（原生通知标题、横幅主标题） |
+| `items[].subtitle` | `string` | 否 | 副标题（横幅副标题、详情弹窗角标文案） |
+| `items[].body` | `string` | 是 | 正文，详情弹窗以 `pre-wrap` 渲染（换行/`- ` 列表可用） |
+| `items[].publishedAt` | `string` | 否 | ISO 8601 时间，详情弹窗展示 |
+| `items[].actions` | `array` | 否 | 详情弹窗底部动作按钮，可为空数组 |
+| `items[].actions[].label` | `string` | 是 | 按钮文案 |
+| `items[].actions[].kind` | `string` | 是 | `open-url`（默认浏览器打开 `url`）/ `download`（应用内下载并打开 `url`） |
+| `items[].actions[].url` | `string` | 依赖 kind | `open-url` / `download` 必填 |
+
+### 客户端行为
+
+- 公告**默认始终拉取**，不受「自动检查更新」开关影响（该开关只管 GitHub 版本检查）
+- **轮播展示**：新公告进入 `pendingNotices` 队列；设置窗口横幅在 ≥2 条时每 4s 自动轮播，悬停暂停，底部圆点可手动切换；点击横幅 → 弹详情，**不移出队列**
+- 原生通知**合并为一条**：同一轮拉取多条新公告只发一条（如「N 条新公告」），不逐条刷屏
+- **「系统推送」开关**只控制系统通知（`systemNotifications`，默认开启）：关闭后不再发送原生通知、也不申请权限；应用内横幅与详情弹窗不受影响
+- 会话级关闭：点横幅「×」后该 `id` 加入 `dismissedNoticeIds`，**本次应用运行期间**不再展示；重启应用后若该公告仍被服务端返回则再次出现（`notifiedNoticeIds` / `dismissedNoticeIds` 于启动时清空）
+- 同一轮次内去重：`notifiedNoticeIds` 防止重复轮询对同一 `id` 重复提醒
+- 拉取失败：**仅 dev** 静默跳过；prod 记录错误，不中断应用
+
+### 错误
+
+非 `2xx` 或响应体无法按上述结构解析 → 客户端跳过本轮拉取。
+
+## 接口 3：下载并安装角色
 
 非 HTTP 接口，由前端将 `downloadUrl` 传给 Tauri 命令：
 
@@ -115,9 +179,10 @@ fern.zip
 ## 后端对接清单
 
 - 提供 `GET /catalog`，返回上述结构
+- 提供 `GET /notices`，返回公告列表（可为空数组）
 - 提供 `items[].previewUrl` / `items[].downloadUrl` 可匿名访问的 HTTPS 直链
 - zip 按「角色包规范」打包
-- dev 起本地服务（默认 `localhost:8000`）；prod 在反代层将 `/catalog` 与 zip 直链转发到后端，无需配 CORS
+- dev 起本地服务（默认 `localhost:8000`）；prod 在反代层将 `/catalog`、`/notices` 与 zip 直链转发到后端，无需配 CORS
 - 改 `.env.development` / `.env.production` 的 `VITE_SHOP_API_BASE` 指向实际地址 → `pnpm tauri dev` → 商店 Tab 显示真实清单 → 安装验证
 
 ## 后续可扩展（当前未实现）
