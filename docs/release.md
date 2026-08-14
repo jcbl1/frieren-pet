@@ -37,8 +37,9 @@ pnpm tauri build                             # 宿主默认目标
 - `tauri.conf.json` 已启用 `bundle.createUpdaterArtifacts` 与 `plugins.updater`
   （endpoint = `https://github.com/jcbl1/frieren-pet/releases/latest/download/latest.json`）
 - CI 通过 `tauri-action` 自动生成 `.sig` 签名并上传 `latest.json`；
-  依赖两个 GitHub Secrets：`TAURI_SIGNING_PRIVATE_KEY`、`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+  依赖 GitHub Secret `TAURI_SIGNING_PRIVATE_KEY`；`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` **可选**
+  （缺失时 workflow 默认空串——当前密钥无口令，可正常签名；仅当密钥带真实口令时才需配置）
 - 密钥对生成（本地，一次性）：`pnpm tauri signer generate -w ~/.tauri/frieren-pet.key`
   公钥已写入 `tauri.conf.json`；私钥务必妥善保管，丢失后无法再发布可更新的版本
-- **未配置这两个 secret 前，发版 CI 会失败**；在仓库 Settings > Secrets 添加后再打 tag
+- **未配置 `TAURI_SIGNING_PRIVATE_KEY` 前，发版 CI 会失败**；在仓库 Settings > Secrets 添加后再打 tag
 - 分发限制：macOS 需代码签名/公证否则 Gatekeeper 拦截更新（见 roadmap 项 2）
