@@ -5,6 +5,7 @@ use tauri::Manager;
 
 use utils::pet_download::{fetch_shop_catalog, install_pet_from_url};
 use utils::pet_import::{delete_pet, import_pet};
+use utils::updater::{check_for_update, download_release_asset};
 
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
@@ -24,10 +25,14 @@ pub fn run() {
             import_pet,
             delete_pet,
             fetch_shop_catalog,
-            install_pet_from_url
+            install_pet_from_url,
+            check_for_update,
+            download_release_asset
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_pinia::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("preference") {

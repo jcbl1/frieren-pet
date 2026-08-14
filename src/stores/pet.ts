@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 
+import type { NoticeContent } from '@/types/update'
+
 export type ThemeMode = 'light' | 'dark' | 'auto'
 
 export interface PetStoreState {
@@ -13,6 +15,9 @@ export interface PetStoreState {
   x: number | null
   y: number | null
   theme: ThemeMode
+  autoCheckUpdates: boolean
+  pendingNotice: NoticeContent | null
+  dismissedNoticeIds: string[]
 }
 
 export const usePetStore = defineStore('pet', {
@@ -27,5 +32,8 @@ export const usePetStore = defineStore('pet', {
     x: null,
     y: null,
     theme: 'auto',
+    autoCheckUpdates: true,
+    pendingNotice: null,
+    dismissedNoticeIds: [],
   }),
 })

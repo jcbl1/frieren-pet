@@ -5,6 +5,8 @@ import { onMounted, onBeforeUnmount } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import { useTheme } from '@/composables/useTheme'
+import { pushNotice } from '@/services/notice'
+import { checkForUpdate, updateToNotice } from '@/services/updater'
 import { usePetStore } from '@/stores/pet'
 
 const appWindow = getCurrentWebviewWindow()
@@ -37,6 +39,16 @@ onMounted(async () => {
     unlistenShop = await listen('open-shop-tab', () => {
       void router.push('/preference/shop')
     })
+  }
+
+  if (appWindow.label === 'main') {
+    window.setTimeout(() => {
+      if (!petStore.autoCheckUpdates) return
+
+      void checkForUpdate().then((info) => {
+        if (info) pushNotice(updateToNotice(info))
+      })
+    }, 8000)
   }
 })
 

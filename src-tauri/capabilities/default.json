@@ -18,6 +18,8 @@
     "core:path:allow-resolve-directory",
     "pinia:default",
     "dialog:default",
+    "notification:default",
+    "opener:default",
     "fs:default",
     {
       "identifier": "fs:scope",
