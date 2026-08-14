@@ -5,9 +5,10 @@ import { loadPetCatalog } from '@/services/petCatalog'
 import type { PetEntry } from '@/services/petCatalog'
 import { formatSize, installShopPet, loadShopCatalog } from '@/services/petShop'
 import type { ShopItem } from '@/services/petShop'
+import { isVersionNewer } from '@/utils/version'
 
 const items = ref<ShopItem[]>([])
-const installedIds = ref(new Set<string>())
+const installedVersions = ref(new Map<string, string | undefined>())
 const installingId = ref<string | null>(null)
 const loading = ref(true)
 const status = ref<{ message: string; isError: boolean } | null>(null)
@@ -25,7 +26,24 @@ async function loadInstalledIds() {
     return
   }
 
-  installedIds.value = new Set(pets.map((pet) => pet.id))
+  installedVersions.value = new Map(pets.map((pet) => [pet.id, pet.version]))
+}
+
+function isUpToDate(item: ShopItem) {
+  const installed = installedVersions.value.get(item.id)
+
+  return installed !== undefined && !isVersionNewer(item.version, installed)
+}
+
+function needsUpdate(item: ShopItem) {
+  return installedVersions.value.has(item.id) && !isUpToDate(item)
+}
+
+function installLabel(item: ShopItem) {
+  if (installingId.value === item.id) return '安装中…'
+  if (isUpToDate(item)) return '已安装'
+  if (installedVersions.value.has(item.id)) return '更新'
+  return '安装'
 }
 
 async function load() {
@@ -62,6 +80,8 @@ function setStatus(message: string, isError = false) {
 async function handleInstall(item: ShopItem) {
   if (installingId.value) return
 
+  const wasInstalled = installedVersions.value.has(item.id)
+
   installingId.value = item.id
   status.value = null
 
@@ -70,7 +90,7 @@ async function handleInstall(item: ShopItem) {
 
     await loadInstalledIds()
 
-    setStatus(`已安装角色「${item.name}」，可在「角色」中切换`)
+    setStatus(wasInstalled ? `已更新角色「${item.name}」` : `已安装角色「${item.name}」，可在「角色」中切换`)
   } catch (error) {
     setStatus(String(error), true)
   }
@@ -119,13 +139,12 @@ async function handleInstall(item: ShopItem) {
 
           <button
             class="shop-install"
+            :class="{ update: needsUpdate(item) }"
             type="button"
-            :disabled="installedIds.has(item.id) || installingId === item.id"
+            :disabled="installingId === item.id || isUpToDate(item)"
             @click="handleInstall(item)"
           >
-            <template v-if="installedIds.has(item.id)">已安装</template>
-            <template v-else-if="installingId === item.id">安装中…</template>
-            <template v-else>安装</template>
+            {{ installLabel(item) }}
           </button>
         </div>
       </div>
@@ -282,6 +301,16 @@ async function handleInstall(item: ShopItem) {
 
 .shop-install:hover {
   background: var(--accent-hover);
+}
+
+.shop-install.update {
+  border-color: var(--accent-soft);
+  background: var(--bg-surface);
+  color: var(--accent);
+}
+
+.shop-install.update:hover {
+  background: var(--accent-soft);
 }
 
 .shop-install:disabled {

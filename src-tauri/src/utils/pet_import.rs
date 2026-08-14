@@ -81,6 +81,8 @@ struct PetConfigRaw {
     #[serde(default)]
     preview: Option<String>,
     #[serde(default)]
+    version: Option<String>,
+    #[serde(default)]
     capabilities: HashMap<String, CapabilityTarget>,
     states: HashMap<String, PetStateConfigRaw>,
 }
@@ -107,6 +109,12 @@ fn validate_pet_config(config: &PetConfigRaw, from_dir: &Path) -> Result<(), Str
 
     if config.name.trim().is_empty() {
         return Err("角色缺少 name".into());
+    }
+
+    if let Some(version) = &config.version {
+        if version.trim().is_empty() {
+            return Err("角色 version 不能为空".into());
+        }
     }
 
     if !SUPPORTED_FORMATS.contains(&config.format.as_str()) {
@@ -314,6 +322,7 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            version: None,
             capabilities: HashMap::new(),
             states: HashMap::from([(
                 "sleep".into(),
@@ -342,6 +351,7 @@ mod tests {
             height: 20_000_000_000.0,
             default_state: "sleep".into(),
             preview: None,
+            version: None,
             capabilities: HashMap::new(),
             states: HashMap::from([(
                 "sleep".into(),
@@ -370,6 +380,7 @@ mod tests {
             height: 100.0,
             default_state: "idle".into(),
             preview: None,
+            version: None,
             capabilities: HashMap::new(),
             states: HashMap::from([(
                 "sleep".into(),
@@ -399,6 +410,7 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            version: None,
             capabilities: HashMap::new(),
             states: HashMap::from([(
                 "sleep".into(),
@@ -429,6 +441,7 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            version: None,
             capabilities: HashMap::from([("click".into(), "nope".into())]),
             states: HashMap::from([(
                 "sleep".into(),
@@ -459,6 +472,7 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            version: None,
             capabilities: HashMap::from([(
                 "click".into(),
                 CapabilityTarget::Config(PetCapabilityRaw {
@@ -494,6 +508,7 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            version: None,
             capabilities: HashMap::from([(
                 "click".into(),
                 CapabilityTarget::Config(PetCapabilityRaw {
@@ -528,6 +543,7 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            version: None,
             capabilities: HashMap::from([(
                 "click".into(),
                 CapabilityTarget::Config(PetCapabilityRaw {
@@ -552,6 +568,69 @@ mod tests {
         assert_eq!(value["capabilities"]["click"]["state"], "sleep");
         assert_eq!(value["capabilities"]["click"]["cooldownMs"], 500);
         assert_eq!(value["capabilities"]["click"]["afterMs"], 30000);
+    }
+
+    #[test]
+    fn config_roundtrip_serializes_version() {
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "gif".into(),
+            width: 100.0,
+            height: 100.0,
+            default_state: "sleep".into(),
+            preview: None,
+            version: Some("1.2.0".into()),
+            capabilities: HashMap::new(),
+            states: HashMap::from([(
+                "sleep".into(),
+                PetStateConfigRaw {
+                    src: "sleep.gif".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        let value = serde_json::to_value(&config).unwrap();
+
+        assert_eq!(value["version"], "1.2.0");
+
+        let back: PetConfigRaw = serde_json::from_value(value).unwrap();
+
+        assert_eq!(back.version.as_deref(), Some("1.2.0"));
+    }
+
+    #[test]
+    fn validation_rejects_empty_version() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("sleep.gif"), b"gif").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "gif".into(),
+            width: 100.0,
+            height: 100.0,
+            default_state: "sleep".into(),
+            preview: None,
+            version: Some("  ".into()),
+            capabilities: HashMap::new(),
+            states: HashMap::from([(
+                "sleep".into(),
+                PetStateConfigRaw {
+                    src: "sleep.gif".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        let result = validate_pet_config(&config, &from_dir);
+
+        assert!(result.is_err());
     }
 
     fn tempfile_dir() -> PathBuf {
