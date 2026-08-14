@@ -160,35 +160,28 @@ src-tauri/assets/pets/
 
 ## 开发
 
-需要 Node ≥ 18、pnpm、Rust、Tauri 系统依赖（Linux 见下）。
+新开发者的完整环境搭建流程；日常命令清单见 [AGENTS.md](AGENTS.md)。
+
+### 环境要求
+
+| 依赖 | 版本 | 说明 |
+|------|------|------|
+| Node | 22（`.nvmrc`） | 用 nvm 管理 |
+| pnpm | 9（`packageManager` 钉 9.15.9） | 用 corepack 钉版本 |
+| Rust | stable | rustup |
+
+### 1. 克隆并准备工具链
 
 ```bash
-pnpm install
-pnpm tauri dev
+git clone <repo> && cd <repo>
+nvm install 22 && nvm use      # 读 .nvmrc
+corepack enable                # 按 packageManager 启用 pnpm 9.15.9
+rustup install stable
 ```
 
-前端单独跑（仅 Vite）：`pnpm dev`
+### 2. 安装平台依赖
 
-类型检查：`pnpm typecheck`  
-Rust（改过 `src-tauri` 后）：`cargo check -p frieren-pet`
-
-### 双宿主共享目录（macOS 宿主 + Linux 容器）
-
-项目目录由 macOS 宿主与 Linux 容器共用时，同一份 `node_modules` 需同时包含两套平台的原生二进制
-（esbuild/rollup/tauri-cli 按 `process.platform` 运行时自动选择）。
-
-已在 `package.json` 配置 `pnpm.supportedArchitectures`，包含 darwin / linux / win32 与 arm64 / x64：
-两端共用一份 `node_modules`，**切换宿主无需重新安装**。
-
-> pnpm 9 该配置只能写在 `package.json` 的 `pnpm` 字段（`supportedArchitectures`），`.npmrc` 不生效。
-
-补充说明：
-- Rust 的 `target/` 为各宿主原生编译产物，无法共用；切换宿主 cargo 会自动重编（首次较慢），
-  高频切换可用 `CARGO_TARGET_DIR` 分流。
-- macOS 首次需在宿主机装 Xcode CLT / Rust / Node / pnpm，并生成 `.icns` 图标
-  （`pnpm tauri icon ./src-tauri/assets/logo.png` + 在 `bundle.icon` 加 `icons/icon.icns`）。
-
-### Linux (Ubuntu) 系统依赖
+Linux (Ubuntu)：
 
 ```bash
 sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
@@ -197,7 +190,36 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
 
 > 注：Linux 上透明 + 置顶依赖 X11 合成器；Wayland 下行为可能受限。
 
-#### 无头 / 容器排障
+macOS：装 Xcode CLT；首次生成 `.icns` 图标
+（`pnpm tauri icon ./src-tauri/assets/logo.png` + 在 `bundle.icon` 加 `icons/icon.icns`）。
+
+Windows：装 VS Build Tools（WebView2 在 Win11 自带）。
+
+### 3. 安装依赖
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+### 4. 验证环境
+
+```bash
+pnpm typecheck
+cargo check -p frieren-pet
+```
+
+### 5. 运行
+
+```bash
+pnpm tauri dev      # 全栈：Tauri 窗口 + 桌宠
+pnpm dev            # 仅前端 Vite（无 Tauri API / 窗口）
+```
+
+shop 后端不可达时自动回落 mock（`src/services/petShop.ts`），无需后端即可启动。
+仅联调 shop 时才需配置：dev 默认指向 `localhost:8080`（`.env.development`）；
+改后端地址请写在 gitignored 的 `.env.development.local`，勿改提交的默认值。
+
+### 无头 / 容器排障
 
 容器或 CI 中 WebKitGTK 沙箱会拦截页面请求，导致窗口空白。用虚拟显示器运行：
 
@@ -216,11 +238,48 @@ WEBKIT_DISABLE_DMABUF_RENDERER=1 \
 
 无托盘主机时托盘创建失败不会阻止应用启动（仅告警）。
 
+### 双宿主共享目录（macOS 宿主 + Linux 容器）
+
+项目目录由 macOS 宿主与 Linux 容器共用时，同一份 `node_modules` 需同时包含两套平台的原生二进制
+（esbuild/rollup/tauri-cli 按 `process.platform` 运行时自动选择）。
+
+已在 `package.json` 配置 `pnpm.supportedArchitectures`，包含 darwin / linux / win32 与 arm64 / x64：
+两端共用一份 `node_modules`，**切换宿主无需重新安装**。
+
+> pnpm 9 该配置只能写在 `package.json` 的 `pnpm` 字段（`supportedArchitectures`），`.npmrc` 不生效。
+
+补充说明：
+- Rust 的 `target/` 为各宿主原生编译产物，无法共用；切换宿主 cargo 会自动重编（首次较慢），
+  高频切换可用 `CARGO_TARGET_DIR` 分流。
+
 ## 构建
 
 ```bash
 pnpm tauri build
 ```
+
+## 与 release workflow 对齐
+
+`pnpm tauri build` 只保证「能打包」；要让本地产物与
+[`.github/workflows/release.yml`](.github/workflows/release.yml) 一致，需复刻其
+版本同步与环境注入两步。本地复现 release 的完整配方：
+
+```bash
+nvm use 22                                   # .nvmrc；CI 用 Node 22
+corepack enable                              # 按 packageManager 钉 pnpm 9.x
+pnpm install --frozen-lockfile               # 与 CI 相同锁文件
+pnpm sync:version vX.Y.Z                     # 同步 package.json/tauri.conf.json/Cargo.toml
+SHOP_API_BASE=<url> pnpm prepare:env         # 写 .env.production.local；缺失即失败（同 CI）
+pnpm tauri build                             # 宿主默认目标
+```
+
+> - 版本、Node/pnpm 与 CI 保持同源：tag `vX.Y.Z` → `scripts/sync-version.mjs`。
+> - `pnpm sync:version` 会改写 3 个已跟踪文件，属预期副作用；不想保留时
+>   `git checkout -- package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml`。
+> - `pnpm prepare:env` 复刻 CI 的 secret 注入：`SHOP_API_BASE` 未设置即 `exit 1`，
+>   避免误用提交的 `.env.production` 占位后端。
+> - 按 CI matrix 指定目标：macOS 上 `pnpm tauri build --target aarch64-apple-darwin`
+>   或 `--target x86_64-apple-darwin`；Linux/Windows 用默认目标。无交叉编译。
 
 ## 目录结构
 

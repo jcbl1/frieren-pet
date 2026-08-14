@@ -8,8 +8,15 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "sync:version": "node scripts/sync-version.mjs",
+    "prepare:env": "node scripts/prepare-env.mjs"
   },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.9",
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.7.0",
