@@ -25,8 +25,8 @@ function ensureRenderer() {
   renderer?.destroy()
   renderer = createRenderer(format)
 
-  if (hostRef.value) {
-    renderer.mount(hostRef.value)
+  if (hostRef.value && props.config) {
+    renderer.mount(hostRef.value, props.config)
   }
 
   return renderer
@@ -35,13 +35,13 @@ function ensureRenderer() {
 function applyState() {
   const renderer = ensureRenderer()
 
-  if (!renderer) return
+  if (!renderer || !props.config) return
 
-  const stateConfig = props.config?.states[props.state]
+  const stateConfig = props.config.states[props.state]
 
   if (!stateConfig) return
 
-  renderer.applyState(props.state, stateConfig, props.src)
+  renderer.applyState(props.state, stateConfig, props.src, props.config)
 }
 
 onMounted(applyState)

@@ -3,7 +3,7 @@ import { appDataDir, join, resolveResource } from '@tauri-apps/api/path'
 
 import type { PetConfig } from '@/types/pet'
 
-const SUPPORTED_FORMATS = new Set(['gif'])
+const SUPPORTED_FORMATS = new Set(['gif', 'live2d'])
 const USER_PETS_DIR = 'pets'
 
 export async function getUserPetsRoot(): Promise<string> {
@@ -48,6 +48,22 @@ export function validatePetConfig(raw: Partial<PetConfig>, rootDir: string, expe
 
   if (!SUPPORTED_FORMATS.has(config.format)) {
     throw new Error(`pet "${config.id}": 不支持的格式 "${String(config.format)}"`)
+  }
+
+  if (config.format === 'live2d') {
+    if (!config.model?.trim()) {
+      throw new Error(`pet "${config.id}": live2d 格式缺少 model`)
+    }
+
+    if (config.motions != null && typeof config.motions !== 'object') {
+      throw new Error(`pet "${config.id}": motions 必须是一个对象`)
+    }
+
+    for (const [group, files] of Object.entries(config.motions ?? {})) {
+      if (!Array.isArray(files) || files.some((file) => !file?.trim())) {
+        throw new Error(`pet "${config.id}": motions[${group}] 必须是非空字符串数组`)
+      }
+    }
   }
 
   if (!Number.isFinite(config.width) || config.width <= 0 || !Number.isFinite(config.height) || config.height <= 0) {

@@ -1,4 +1,4 @@
-import type { PetFormat, PetStateConfig } from '@/types/pet'
+import type { PetConfig, PetFormat, PetStateConfig } from '@/types/pet'
 
 import type { PetRenderer } from './types'
 
@@ -8,7 +8,7 @@ export class GifRenderer implements PetRenderer {
   private host: HTMLElement | null = null
   private image: HTMLImageElement | null = null
 
-  mount(host: HTMLElement) {
+  mount(host: HTMLElement, _config: PetConfig) {
     this.destroy()
 
     this.host = host
@@ -28,7 +28,7 @@ export class GifRenderer implements PetRenderer {
     this.image = image
   }
 
-  applyState(_state: string, _config: PetStateConfig, mediaUrl: string) {
+  applyState(_state: string, _config: PetStateConfig, mediaUrl: string, _petConfig: PetConfig) {
     if (!this.image) return
 
     this.image.src = mediaUrl

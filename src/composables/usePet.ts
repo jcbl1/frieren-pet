@@ -94,7 +94,9 @@ async function setState(state: PetState) {
 
   currentState.value = state
 
-  currentSrc.value = await resolveStateSrc(stateConfig.src)
+  const src = config.format === 'live2d' ? config.model : stateConfig.src
+
+  currentSrc.value = src ? await resolveStateSrc(src) : ''
 
   await scheduleStateTransition(state)
 }
