@@ -21,6 +21,9 @@
     "notification:default",
     "opener:default",
     "fs:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
     {
       "identifier": "fs:scope",
       "allow": [

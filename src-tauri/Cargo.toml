@@ -31,3 +31,6 @@ windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsA
 
 [target."cfg(target_os = \"macos\")".dependencies]
 tauri-nspanel = { path = "../vendor/tauri-nspanel" }
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-autostart = "2.5.1"

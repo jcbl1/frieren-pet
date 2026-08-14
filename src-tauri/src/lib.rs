@@ -19,6 +19,12 @@ pub fn run() {
         .setup(|app| {
             setup::default(app)?;
 
+            #[cfg(desktop)]
+            let _ = app.handle().plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                None,
+            ));
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
