@@ -59,8 +59,6 @@ onMounted(async () => {
     }, 8000)
 
     window.setTimeout(() => {
-      if (!petStore.autoCheckUpdates) return
-
       void pollAndPushNotices()
     }, 10_000)
 

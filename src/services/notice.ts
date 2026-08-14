@@ -111,8 +111,6 @@ export async function fetchNotices(): Promise<NoticeContent[]> {
 export async function pollAndPushNotices(): Promise<void> {
   const petStore = usePetStore()
 
-  if (!petStore.autoCheckUpdates) return
-
   let items: NoticeContent[]
 
   try {

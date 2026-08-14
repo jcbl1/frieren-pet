@@ -56,7 +56,7 @@ async function handleCheckUpdate() {
     <div class="row">
       <div class="row-text">
         <span class="row-label">自动检查更新</span>
-        <span class="row-desc">后台检查新版本与公告，发现时通知</span>
+        <span class="row-desc">后台检查新版本，发现时通知</span>
       </div>
 
       <button
@@ -66,6 +66,24 @@ async function handleCheckUpdate() {
         role="switch"
         :aria-checked="petStore.autoCheckUpdates"
         @click="petStore.autoCheckUpdates = !petStore.autoCheckUpdates"
+      >
+        <span class="knob" />
+      </button>
+    </div>
+
+    <div class="row">
+      <div class="row-text">
+        <span class="row-label">系统推送</span>
+        <span class="row-desc">发现新公告/更新时发送系统通知；关闭后仅应用内横幅提醒</span>
+      </div>
+
+      <button
+        class="switch"
+        :class="{ on: petStore.systemNotifications }"
+        type="button"
+        role="switch"
+        :aria-checked="petStore.systemNotifications"
+        @click="petStore.systemNotifications = !petStore.systemNotifications"
       >
         <span class="knob" />
       </button>

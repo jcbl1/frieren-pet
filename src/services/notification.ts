@@ -1,5 +1,7 @@
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification'
 
+import { usePetStore } from '@/stores/pet'
+
 export function isTauri() {
   return '__TAURI_INTERNALS__' in window
 }
@@ -24,6 +26,8 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 
 export async function notify(title: string, body: string): Promise<void> {
   if (!isTauri()) return
+
+  if (!usePetStore().systemNotifications) return
 
   const granted = await ensureNotificationPermission()
 
