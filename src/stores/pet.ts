@@ -18,6 +18,7 @@ export interface PetStoreState {
   autoCheckUpdates: boolean
   pendingNotice: NoticeContent | null
   dismissedNoticeIds: string[]
+  notifiedNoticeIds: string[]
 }
 
 export const usePetStore = defineStore('pet', {
@@ -35,5 +36,6 @@ export const usePetStore = defineStore('pet', {
     autoCheckUpdates: true,
     pendingNotice: null,
     dismissedNoticeIds: [],
+    notifiedNoticeIds: [],
   }),
 })

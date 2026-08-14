@@ -5,7 +5,7 @@ import { onMounted, onBeforeUnmount } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import { useTheme } from '@/composables/useTheme'
-import { pushNotice } from '@/services/notice'
+import { pollAndPushNotices, pushNotice, scheduleNoticePolling } from '@/services/notice'
 import { checkForUpdate, updateToNotice } from '@/services/updater'
 import { usePetStore } from '@/stores/pet'
 
@@ -19,6 +19,7 @@ function isTauri() {
 
 let unlistenShop: (() => void) | undefined
 let unlistenTheme: (() => void) | undefined
+let stopNoticePolling: (() => void) | undefined
 
 onMounted(async () => {
   if (appWindow.label === 'preference') {
@@ -49,12 +50,21 @@ onMounted(async () => {
         if (info) pushNotice(updateToNotice(info))
       })
     }, 8000)
+
+    window.setTimeout(() => {
+      if (!petStore.autoCheckUpdates) return
+
+      void pollAndPushNotices()
+    }, 10_000)
+
+    stopNoticePolling = scheduleNoticePolling()
   }
 })
 
 onBeforeUnmount(() => {
   unlistenShop?.()
   unlistenTheme?.()
+  stopNoticePolling?.()
 })
 </script>
 

@@ -56,7 +56,7 @@ async function handleCheckUpdate() {
     <div class="row">
       <div class="row-text">
         <span class="row-label">自动检查更新</span>
-        <span class="row-desc">启动后后台检查，发现新版本时通知</span>
+        <span class="row-desc">后台检查新版本与公告，发现时通知</span>
       </div>
 
       <button

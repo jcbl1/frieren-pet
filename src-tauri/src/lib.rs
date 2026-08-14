@@ -3,6 +3,7 @@ mod utils;
 
 use tauri::Manager;
 
+use utils::notices::fetch_notices;
 use utils::pet_download::{fetch_shop_catalog, install_pet_from_url};
 use utils::pet_import::{delete_pet, import_pet};
 use utils::updater::{check_for_update, download_release_asset};
@@ -27,7 +28,8 @@ pub fn run() {
             fetch_shop_catalog,
             install_pet_from_url,
             check_for_update,
-            download_release_asset
+            download_release_asset,
+            fetch_notices
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
