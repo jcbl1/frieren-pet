@@ -34,6 +34,7 @@ src-tauri/assets/pets/
   "width": 736,
   "height": 736,
   "defaultState": "sleep",
+  "version": "1.0.0",
   "preview": "fallback.png",
   "capabilities": {
     "click": "click",
@@ -59,6 +60,7 @@ src-tauri/assets/pets/
 | `format` | 渲染后端；当前仅 `"gif"`，未知格式拒绝加载 |
 | `width` / `height` | 角色基准尺寸（宽高比）；窗口尺寸 = 屏幕短边 × 25% × `scale/100` |
 | `defaultState` | 启动 / 切换角色后的初始状态，必须 ∈ `states` |
+| `version` | 可选，角色版本号（如 `1.0.0`）。商店用它与 `catalog.items[].version` 对比，检测是否可更新；缺省视为旧版可更新 |
 | `preview` | 设置页缩略图（相对包根）；缺省用 `defaultState` 的 `src` |
 | `capabilities` | UI **意图** → 状态名。值可为字符串 `"state"` 或对象 `{ state, cooldownMs?, afterMs? }`；缺 key / 目标状态不存在 → **静默 no-op** |
 | `capabilities.*.cooldownMs` | 同一意图最小触发间隔（防连发） |

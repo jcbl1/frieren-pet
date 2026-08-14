@@ -1,15 +1,12 @@
 # Roadmap
 
-当前已实现：GIF 渲染状态机、多角色（预设 / 导入 / 商店）、托盘与关窗隐藏、设置持久化与跨窗同步、公告轮询与横幅、GitHub 更新检查。
+当前已实现：GIF 渲染状态机、多角色（预设 / 导入 / 商店）、托盘与关窗隐藏、设置持久化与跨窗同步、公告轮询与横幅、**应用内自动更新**、**开机自启**、**商店角色版本更新检测**、GitHub 更新检查。
 
 以下为「完整应用」视角下的欠缺功能，按优先级分组。标注「架构备注」的项与 [docs/architecture.md](architecture.md) 的「后续可扩展」一致。
 
 ## 高优先级（核心体验 / 发布）
 
-- **应用内自动更新**：目前 `src-tauri/src/utils/updater.rs` 只做检查 + 下载 + 打开安装包；无静默下载安装并重启。可评估接入 `tauri-plugin-updater`
-- **代码签名 / 公证**：无 macOS notarization、Windows 代码签名，正式分发受限
-- **开机自启**：未引入 `tauri-plugin-autostart`，无「开机启动」开关
-- **商店角色版本更新检测**：`pet.json` 协议缺 `version` 字段（见 [docs/shop-api.md](shop-api.md)「后续可扩展」），无法对比已装角色并提示更新
+- **代码签名 / 公证**：无 macOS notarization、Windows 代码签名。自动更新在 macOS 上受 Gatekeeper 拦截，需配置 Apple 证书后由 CI 签名/公证
 - **更多渲染后端**：仅 `gif`（`src/renderers/createRenderer.ts`），缺序列帧 / Live2D / 透明视频（架构备注）
 
 ## 中优先级（桌宠特色 / 设置）
