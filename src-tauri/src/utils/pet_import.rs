@@ -10,7 +10,7 @@ use tauri::{AppHandle, Manager};
 const PET_CONFIG_FILE: &str = "pet.json";
 const PETS_DIR: &str = "pets";
 const MANIFEST_PATH: &str = "assets/pets/manifest.json";
-const SUPPORTED_FORMATS: &[&str] = &["gif"];
+const SUPPORTED_FORMATS: &[&str] = &["gif", "live2d"];
 
 fn is_valid_pet_id(id: &str) -> bool {
     if id.is_empty() || id.len() > 64 {
@@ -81,6 +81,10 @@ struct PetConfigRaw {
     #[serde(default)]
     preview: Option<String>,
     #[serde(default)]
+    model: Option<String>,
+    #[serde(default)]
+    motions: HashMap<String, Vec<String>>,
+    #[serde(default)]
     capabilities: HashMap<String, CapabilityTarget>,
     states: HashMap<String, PetStateConfigRaw>,
 }
@@ -97,6 +101,62 @@ fn parse_pet_config(path: &Path) -> Result<PetConfigRaw, String> {
     serde_json::from_str(&content).map_err(|err| format!("解析 pet.json 失败: {err}"))
 }
 
+fn live2d_model_groups(value: &serde_json::Value) -> Vec<String> {
+    let mut groups = Vec::new();
+
+    if let Some(object) = value
+        .get("FileReferences")
+        .and_then(|file_refs| file_refs.get("Motions"))
+        .and_then(|motions| motions.as_object())
+    {
+        groups.extend(object.keys().cloned());
+    }
+
+    if let Some(array) = value.get("Motions").and_then(|motions| motions.as_array()) {
+        for motion in array {
+            if let Some(group) = motion.get("Group").and_then(|group| group.as_str()) {
+                if !groups.iter().any(|existing| existing == group) {
+                    groups.push(group.to_string());
+                }
+            }
+        }
+    }
+
+    groups
+}
+
+fn validate_live2d_config(
+    config: &PetConfigRaw,
+    from_dir: &Path,
+    existing_groups: &mut Vec<String>,
+) -> Result<(), String> {
+    let model = config.model.as_deref().ok_or_else(|| "live2d 格式缺少 model".to_string())?;
+
+    if !from_dir.join(model).is_file() {
+        return Err(format!("模型文件 \"{model}\" 不存在"));
+    }
+
+    let content = fs::read_to_string(from_dir.join(model))
+        .map_err(|err| format!("读取模型文件失败: {err}"))?;
+
+    let model_json: serde_json::Value =
+        serde_json::from_str(&content).map_err(|err| format!("解析模型文件失败: {err}"))?;
+
+    existing_groups.extend(live2d_model_groups(&model_json));
+
+    for (group, files) in &config.motions {
+        existing_groups.push(group.clone());
+
+        for file in files {
+            if !from_dir.join(file).is_file() {
+                return Err(format!("motions[{group}] 的动作文件 \"{file}\" 不存在"));
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn validate_pet_config(config: &PetConfigRaw, from_dir: &Path) -> Result<(), String> {
     if !is_valid_pet_id(&config.id) {
         return Err(format!(
@@ -111,7 +171,7 @@ fn validate_pet_config(config: &PetConfigRaw, from_dir: &Path) -> Result<(), Str
 
     if !SUPPORTED_FORMATS.contains(&config.format.as_str()) {
         return Err(format!(
-            "暂不支持的角色格式 \"{}\"（当前仅支持 gif）",
+            "暂不支持的角色格式 \"{}\"（当前支持 gif、live2d）",
             config.format
         ));
     }
@@ -131,12 +191,33 @@ fn validate_pet_config(config: &PetConfigRaw, from_dir: &Path) -> Result<(), Str
         ));
     }
 
+    if config.format == "live2d" {
+        let mut groups = Vec::new();
+
+        validate_live2d_config(config, from_dir, &mut groups)?;
+
+        for (state_name, state) in &config.states {
+            if !groups.iter().any(|group| group == &state.src) {
+                return Err(format!(
+                    "state \"{state_name}\" 的动作组 \"{}\" 不在模型中",
+                    state.src
+                ));
+            }
+        }
+
+        let preview = config.preview.as_deref().ok_or("live2d 格式需要 preview 图片")?;
+
+        if !from_dir.join(preview).is_file() {
+            return Err(format!("preview \"{preview}\" 不存在"));
+        }
+    }
+
     for (state_name, state) in &config.states {
         if state.src.trim().is_empty() {
             return Err(format!("state \"{state_name}\" 缺少 src"));
         }
 
-        if !from_dir.join(&state.src).is_file() {
+        if config.format == "gif" && !from_dir.join(&state.src).is_file() {
             return Err(format!(
                 "state \"{state_name}\" 的素材 \"{}\" 不存在",
                 state.src
@@ -162,9 +243,11 @@ fn validate_pet_config(config: &PetConfigRaw, from_dir: &Path) -> Result<(), Str
         }
     }
 
-    if let Some(preview) = &config.preview {
-        if !from_dir.join(preview).is_file() {
-            return Err(format!("preview \"{preview}\" 不存在"));
+    if config.format == "gif" {
+        if let Some(preview) = &config.preview {
+            if !from_dir.join(preview).is_file() {
+                return Err(format!("preview \"{preview}\" 不存在"));
+            }
         }
     }
 
@@ -314,6 +397,8 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            model: None,
+            motions: HashMap::new(),
             capabilities: HashMap::new(),
             states: HashMap::from([(
                 "sleep".into(),
@@ -342,6 +427,8 @@ mod tests {
             height: 20_000_000_000.0,
             default_state: "sleep".into(),
             preview: None,
+            model: None,
+            motions: HashMap::new(),
             capabilities: HashMap::new(),
             states: HashMap::from([(
                 "sleep".into(),
@@ -370,6 +457,8 @@ mod tests {
             height: 100.0,
             default_state: "idle".into(),
             preview: None,
+            model: None,
+            motions: HashMap::new(),
             capabilities: HashMap::new(),
             states: HashMap::from([(
                 "sleep".into(),
@@ -399,6 +488,8 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            model: None,
+            motions: HashMap::new(),
             capabilities: HashMap::new(),
             states: HashMap::from([(
                 "sleep".into(),
@@ -429,6 +520,8 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            model: None,
+            motions: HashMap::new(),
             capabilities: HashMap::from([("click".into(), "nope".into())]),
             states: HashMap::from([(
                 "sleep".into(),
@@ -459,6 +552,8 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            model: None,
+            motions: HashMap::new(),
             capabilities: HashMap::from([(
                 "click".into(),
                 CapabilityTarget::Config(PetCapabilityRaw {
@@ -494,6 +589,8 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            model: None,
+            motions: HashMap::new(),
             capabilities: HashMap::from([(
                 "click".into(),
                 CapabilityTarget::Config(PetCapabilityRaw {
@@ -528,6 +625,8 @@ mod tests {
             height: 100.0,
             default_state: "sleep".into(),
             preview: None,
+            model: None,
+            motions: HashMap::new(),
             capabilities: HashMap::from([(
                 "click".into(),
                 CapabilityTarget::Config(PetCapabilityRaw {
@@ -552,6 +651,257 @@ mod tests {
         assert_eq!(value["capabilities"]["click"]["state"], "sleep");
         assert_eq!(value["capabilities"]["click"]["cooldownMs"], 500);
         assert_eq!(value["capabilities"]["click"]["afterMs"], 30000);
+    }
+
+    #[test]
+    fn validation_accepts_live2d_with_registered_motions() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("model.model3.json"), br#"{
+            "FileReferences": {
+                "Motions": {
+                    "Idle": [{ "File": "idle.motion3.json" }],
+                    "TapBody": [{ "File": "tap.motion3.json" }]
+                }
+            }
+        }"#)
+        .unwrap();
+        fs::write(from_dir.join("idle.motion3.json"), b"{}").unwrap();
+        fs::write(from_dir.join("tap.motion3.json"), b"{}").unwrap();
+        fs::write(from_dir.join("preview.png"), b"png").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "live2d".into(),
+            width: 100.0,
+            height: 100.0,
+            default_state: "idle".into(),
+            preview: Some("preview.png".into()),
+            model: Some("model.model3.json".into()),
+            motions: HashMap::new(),
+            capabilities: HashMap::new(),
+            states: HashMap::from([
+                (
+                    "idle".into(),
+                    PetStateConfigRaw {
+                        src: "Idle".into(),
+                        r#loop: true,
+                        duration_ms: None,
+                        next: None,
+                    },
+                ),
+                (
+                    "tap".into(),
+                    PetStateConfigRaw {
+                        src: "TapBody".into(),
+                        r#loop: false,
+                        duration_ms: None,
+                        next: None,
+                    },
+                ),
+            ]),
+        };
+
+        assert!(validate_pet_config(&config, &from_dir).is_ok());
+    }
+
+    #[test]
+    fn validation_accepts_live2d_with_unregistered_motions() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("model.model3.json"), br#"{
+            "FileReferences": {
+                "Moc": "model.moc3",
+                "Textures": []
+            }
+        }"#)
+        .unwrap();
+        fs::write(from_dir.join("scene.motion3.json"), b"{}").unwrap();
+        fs::write(from_dir.join("walk.motion3.json"), b"{}").unwrap();
+        fs::write(from_dir.join("preview.png"), b"png").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "live2d".into(),
+            width: 100.0,
+            height: 100.0,
+            default_state: "idle".into(),
+            preview: Some("preview.png".into()),
+            model: Some("model.model3.json".into()),
+            motions: HashMap::from([
+                ("Idle".into(), vec!["scene.motion3.json".into()]),
+                ("Walk".into(), vec!["walk.motion3.json".into()]),
+            ]),
+            capabilities: HashMap::new(),
+            states: HashMap::from([
+                (
+                    "idle".into(),
+                    PetStateConfigRaw {
+                        src: "Idle".into(),
+                        r#loop: true,
+                        duration_ms: None,
+                        next: None,
+                    },
+                ),
+                (
+                    "walk".into(),
+                    PetStateConfigRaw {
+                        src: "Walk".into(),
+                        r#loop: false,
+                        duration_ms: None,
+                        next: None,
+                    },
+                ),
+            ]),
+        };
+
+        assert!(validate_pet_config(&config, &from_dir).is_ok());
+    }
+
+    #[test]
+    fn validation_rejects_live2d_missing_model() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("preview.png"), b"png").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "live2d".into(),
+            width: 100.0,
+            height: 100.0,
+            default_state: "idle".into(),
+            preview: Some("preview.png".into()),
+            model: None,
+            motions: HashMap::new(),
+            capabilities: HashMap::new(),
+            states: HashMap::from([(
+                "idle".into(),
+                PetStateConfigRaw {
+                    src: "Idle".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        let result = validate_pet_config(&config, &from_dir);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validation_rejects_live2d_missing_group() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("model.model3.json"), br#"{
+            "FileReferences": {
+                "Motions": {
+                    "Idle": [{ "File": "idle.motion3.json" }]
+                }
+            }
+        }"#)
+        .unwrap();
+        fs::write(from_dir.join("idle.motion3.json"), b"{}").unwrap();
+        fs::write(from_dir.join("preview.png"), b"png").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "live2d".into(),
+            width: 100.0,
+            height: 100.0,
+            default_state: "idle".into(),
+            preview: Some("preview.png".into()),
+            model: Some("model.model3.json".into()),
+            motions: HashMap::new(),
+            capabilities: HashMap::new(),
+            states: HashMap::from([(
+                "tap".into(),
+                PetStateConfigRaw {
+                    src: "TapBody".into(),
+                    r#loop: false,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        let result = validate_pet_config(&config, &from_dir);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validation_rejects_live2d_missing_preview() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("model.model3.json"), br#"{
+            "FileReferences": {
+                "Motions": {
+                    "Idle": [{ "File": "idle.motion3.json" }]
+                }
+            }
+        }"#)
+        .unwrap();
+        fs::write(from_dir.join("idle.motion3.json"), b"{}").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "live2d".into(),
+            width: 100.0,
+            height: 100.0,
+            default_state: "idle".into(),
+            preview: None,
+            model: Some("model.model3.json".into()),
+            motions: HashMap::new(),
+            capabilities: HashMap::new(),
+            states: HashMap::from([(
+                "idle".into(),
+                PetStateConfigRaw {
+                    src: "Idle".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        let result = validate_pet_config(&config, &from_dir);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validation_rejects_live2d_missing_motion_file() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("model.model3.json"), b"{}").unwrap();
+        fs::write(from_dir.join("preview.png"), b"png").unwrap();
+
+        let config = PetConfigRaw {
+            id: "newpet".into(),
+            name: "New Pet".into(),
+            format: "live2d".into(),
+            width: 100.0,
+            height: 100.0,
+            default_state: "idle".into(),
+            preview: Some("preview.png".into()),
+            model: Some("model.model3.json".into()),
+            motions: HashMap::from([("Idle".into(), vec!["missing.motion3.json".into()])]),
+            capabilities: HashMap::new(),
+            states: HashMap::from([(
+                "idle".into(),
+                PetStateConfigRaw {
+                    src: "Idle".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        let result = validate_pet_config(&config, &from_dir);
+
+        assert!(result.is_err());
     }
 
     fn tempfile_dir() -> PathBuf {

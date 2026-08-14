@@ -15,7 +15,9 @@
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-fs": "^2.5.0",
     "@tauri-store/pinia": "^3.7.1",
+    "easy-live2d": "^0.4.4",
     "pinia": "^3.0.4",
+    "pixi.js": "^8.19.0",
     "vue": "^3.5.13",
     "vue-router": "^4.6.4"
   },
