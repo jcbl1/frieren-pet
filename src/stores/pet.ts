@@ -16,7 +16,7 @@ export interface PetStoreState {
   y: number | null
   theme: ThemeMode
   autoCheckUpdates: boolean
-  pendingNotice: NoticeContent | null
+  pendingNotices: NoticeContent[]
   dismissedNoticeIds: string[]
   notifiedNoticeIds: string[]
 }
@@ -34,7 +34,7 @@ export const usePetStore = defineStore('pet', {
     y: null,
     theme: 'auto',
     autoCheckUpdates: true,
-    pendingNotice: null,
+    pendingNotices: [],
     dismissedNoticeIds: [],
     notifiedNoticeIds: [],
   }),

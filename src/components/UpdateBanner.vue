@@ -2,22 +2,21 @@
 import { computed } from 'vue'
 
 import { usePetStore } from '@/stores/pet'
-import { dismissNotice, isNoticeDismissed } from '@/services/notice'
+import { dequeueNotice, dismissNotice } from '@/services/notice'
 import { useNoticeModal } from '@/composables/useNoticeModal'
 
 const petStore = usePetStore()
 const { open } = useNoticeModal()
 
-const notice = computed(() => {
-  const pending = petStore.pendingNotice
-
-  if (!pending) return null
-
-  return isNoticeDismissed(pending.id) ? null : pending
-})
+const notice = computed(() => petStore.pendingNotices[0] ?? null)
 
 function handleOpen() {
-  if (notice.value) open(notice.value)
+  const current = notice.value
+
+  if (!current) return
+
+  dequeueNotice(current.id)
+  open(current)
 }
 
 function handleDismiss() {

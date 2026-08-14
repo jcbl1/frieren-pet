@@ -23,14 +23,49 @@ const MOCK_NOTICES: NoticeContent[] = [
   },
 ]
 
-export function pushNotice(notice: NoticeContent, withSystemNotification = true): void {
+function mergedNotification(notices: NoticeContent[]) {
+  if (notices.length === 0) return
+
+  const first = notices[0]
+
+  if (notices.length === 1) {
+    void notify(first.title, first.subtitle ?? first.body.slice(0, 80))
+
+    return
+  }
+
+  void notify(`${notices.length} 条新公告`, first.subtitle ?? first.title)
+}
+
+export function enqueueNotices(
+  notices: NoticeContent[],
+  { notify: withNotification }: { notify: boolean },
+): void {
   const petStore = usePetStore()
 
-  petStore.pendingNotice = notice
+  const existing = new Set(petStore.pendingNotices.map((notice) => notice.id))
 
-  if (withSystemNotification) {
-    void notify(notice.title, notice.subtitle ?? notice.body.slice(0, 80))
+  const toAdd = notices.filter(
+    (notice) => !existing.has(notice.id) && !petStore.dismissedNoticeIds.includes(notice.id),
+  )
+
+  if (toAdd.length > 0) {
+    petStore.pendingNotices.push(...toAdd)
   }
+
+  if (withNotification && toAdd.length > 0) {
+    mergedNotification(toAdd)
+  }
+}
+
+export function dequeueNotice(id: string): NoticeContent | null {
+  const petStore = usePetStore()
+
+  const index = petStore.pendingNotices.findIndex((notice) => notice.id === id)
+
+  if (index === -1) return null
+
+  return petStore.pendingNotices.splice(index, 1)[0]
 }
 
 export function dismissNotice(id: string): void {
@@ -40,15 +75,15 @@ export function dismissNotice(id: string): void {
     petStore.dismissedNoticeIds.push(id)
   }
 
-  if (petStore.pendingNotice?.id === id) {
-    petStore.pendingNotice = null
-  }
+  dequeueNotice(id)
 }
 
-export function isNoticeDismissed(id: string): boolean {
+export function resetNoticeSession(): void {
   const petStore = usePetStore()
 
-  return petStore.dismissedNoticeIds.includes(id)
+  petStore.pendingNotices = []
+  petStore.dismissedNoticeIds = []
+  petStore.notifiedNoticeIds = []
 }
 
 async function fetchNoticesFromServer(): Promise<NoticeContent[]> {
@@ -88,12 +123,15 @@ export async function pollAndPushNotices(): Promise<void> {
     return
   }
 
-  for (const item of items) {
-    if (petStore.notifiedNoticeIds.includes(item.id)) continue
+  const fresh = items.filter((item) => !petStore.notifiedNoticeIds.includes(item.id))
 
+  if (fresh.length === 0) return
+
+  for (const item of fresh) {
     petStore.notifiedNoticeIds.push(item.id)
-    pushNotice(item)
   }
+
+  enqueueNotices(fresh, { notify: true })
 }
 
 export function scheduleNoticePolling(): () => void {

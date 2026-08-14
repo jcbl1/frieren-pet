@@ -3,7 +3,7 @@ import { getName, getVersion } from '@tauri-apps/api/app'
 import { onMounted, ref } from 'vue'
 
 import { useNoticeModal } from '@/composables/useNoticeModal'
-import { pushNotice } from '@/services/notice'
+import { enqueueNotices } from '@/services/notice'
 import { checkForUpdate, updateToNotice } from '@/services/updater'
 import { usePetStore } from '@/stores/pet'
 
@@ -35,7 +35,7 @@ async function handleCheckUpdate() {
     if (info) {
       const notice = updateToNotice(info)
 
-      pushNotice(notice, false)
+      enqueueNotices([notice], { notify: false })
       open(notice)
     } else {
       checkMessage.value = '当前已是最新版本'

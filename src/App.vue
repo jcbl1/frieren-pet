@@ -5,7 +5,12 @@ import { onMounted, onBeforeUnmount } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import { useTheme } from '@/composables/useTheme'
-import { pollAndPushNotices, pushNotice, scheduleNoticePolling } from '@/services/notice'
+import {
+  enqueueNotices,
+  pollAndPushNotices,
+  resetNoticeSession,
+  scheduleNoticePolling,
+} from '@/services/notice'
 import { checkForUpdate, updateToNotice } from '@/services/updater'
 import { usePetStore } from '@/stores/pet'
 
@@ -43,11 +48,13 @@ onMounted(async () => {
   }
 
   if (appWindow.label === 'main') {
+    resetNoticeSession()
+
     window.setTimeout(() => {
       if (!petStore.autoCheckUpdates) return
 
       void checkForUpdate().then((info) => {
-        if (info) pushNotice(updateToNotice(info))
+        if (info) enqueueNotices([updateToNotice(info)], { notify: true })
       })
     }, 8000)
 
