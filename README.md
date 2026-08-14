@@ -32,3 +32,4 @@ pnpm dev              # 仅前端 Vite（无 Tauri API / 窗口）
 | [docs/architecture.md](docs/architecture.md) | 架构：目录结构 / 设置与持久化 / 窗口行为 / 平台笔记 |
 | [docs/release.md](docs/release.md) | 构建与 release workflow 对齐 |
 | [docs/shop-api.md](docs/shop-api.md) | 商店后端接口契约 |
+| [docs/roadmap.md](docs/roadmap.md) | 欠缺功能清单与优先级 |
