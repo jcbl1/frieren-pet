@@ -1,20 +1,24 @@
 # AGENTS.md
 
-Tauri 2 + Vue 3 desktop pet. Architecture mirrors BongoCat (`ref/BongoCat/`, gitignored — local read-only reference).
+Tauri 2 + Vue 3 desktop pet. Architecture mirrors BongoCat (`ref/BongoCat/`, gitignored — local read-only reference). User-facing docs live in `docs/`; README is a landing page.
 
 ## Commands
 
 ```bash
-pnpm install
+nvm use 22                 # .nvmrc; Node 22, pnpm 9 (packageManager), Rust stable
+corepack enable
+pnpm install --frozen-lockfile
 pnpm tauri dev          # runs `pnpm dev` via beforeDevCommand
 pnpm dev                # Vite only — no Tauri APIs / window
 pnpm typecheck          # vue-tsc --noEmit (no lint / no tests)
 pnpm build              # frontend → dist/
 pnpm tauri build        # native bundle (run on target OS)
 cargo check -p frieren-pet   # after Rust edits; bare `cargo check` may pull macOS-only deps on Linux
+pnpm sync:version vX.Y.Z     # writes version to package.json + tauri.conf.json + Cargo.toml (dirty-tree side effect)
+SHOP_API_BASE=<url> pnpm prepare:env  # writes gitignored .env.production.local; exits 1 if var unset (mirrors CI secret)
 ```
 
-- Package manager is **pnpm** (`beforeDevCommand`/`beforeBuildCommand` call it). No test suite / ESLint / Prettier.
+- Package manager is **pnpm**. No test suite / ESLint / Prettier.
 - Vite: port **1420**, `strictPort: true`, ignores `src-tauri/**`.
 
 ## Layout
@@ -23,19 +27,17 @@ cargo check -p frieren-pet   # after Rust edits; bare `cargo check` may pull mac
 |------|------|
 | `src/` | Vue frontend (`@/` → `src/`) |
 | `src/pages/main/index.vue` | Pet window: drag, intents → `invoke`, scale |
-| `src/pages/preference/index.vue` | Settings: pet cards / import-delete / window / about |
+| `src/pages/preference/` | Settings: `PetsTab` / `ShopTab` / `AppearanceTab` / `AboutTab` |
 | `src/composables/usePet.ts` | State machine + pet reload + window resize/position |
-| `src/services/petConfig.ts` | Load/validate `pet.json`; preset via manifest; user via `appDataDir/pets` |
-| `src/services/petCatalog.ts` | Catalog list + `importPet`/`deletePet` wrappers |
-| `src/renderers/` + `src/components/PetViewport.vue` | Renderer interface + `gif` backend |
+| `src/services/` | `petConfig`/`petCatalog` (pets), `petShop` (shop, dev mock fallback), `notice`/`notification`/`updater` |
 | `src/stores/pet.ts` | Pinia store, **persisted** via `@tauri-store/pinia` |
 | `src/types/pet.ts` | pet.json v1 types |
-| `src-tauri/assets/pets/<id>/` | `pet.json` + media (asset protocol) |
-| `src-tauri/assets/pets/manifest.json` | `presets` built-in id list (runtime) |
-| `src-tauri/src/lib.rs` | Entry, `import_pet`/`delete_pet`, single-instance → settings, close→hide |
-| `src-tauri/src/utils/pet_import.rs` | Import validation/copy; delete user pets |
-| `src-tauri/src/setup/` | Tray + platform setup |
+| `src-tauri/assets/pets/manifest.json` | `presets` built-in id list (runtime; **not** `readDir`) |
+| `src-tauri/src/lib.rs` | Entry. Commands: `import_pet`/`delete_pet`, `fetch_shop_catalog`, `install_pet_from_url`, `check_for_update`/`download_release_asset`, `fetch_notices`, `quit_app` |
+| `src-tauri/src/utils/` | `pet_import.rs` (import/delete), `pet_download.rs` (shop), `updater.rs`, `notices.rs` |
+| `src-tauri/src/setup/` | Tray + platform setup (macOS NSPanel) |
 | `vendor/tauri-nspanel/` | macOS-only path dep (do not fetch) |
+| `docs/` | `setup` / `pet-format` / `architecture` / `release` / `shop-api` |
 | `ref/` | Upstream mirror — **never commit** |
 
 Cargo workspace root is this directory; only member is `src-tauri`.
@@ -49,20 +51,23 @@ Cargo workspace root is this directory; only member is `src-tauri`.
 - UI sends **intents** only: click / doubleClick / mouseEnter / mouseLeave / dragStart / dragEnd / rightClick / idle, plus load/switch (`start()` / `reloadPet()` → `setState(defaultState)`). Intents map via `capabilities` → per-pet states; missing cap/state is a **silent no-op**.
 - `capabilities` values: string `"state"` or `{ state, cooldownMs?, afterMs? }` (`afterMs` only for `idle`, fallback 60s). Validation (TS `petConfig.ts` + Rust `pet_import.rs`) requires target state ∈ `states`.
 - `currentPetId` lives in the Pinia store (default `"frieren"`); **main** watches it → `reloadPet()` (clear cache → load → default state → resize → wake). Preference only writes the id.
+- Import/delete, shop install (`install_pet_from_url`), and update asset download all route through the same `pet_import.rs` validation (id/format/states/media/capabilities). `fetch_shop_catalog`/`fetch_notices` take a `base_url` string arg — frontend passes `SHOP_API_BASE`.
 - Render path: `PetViewport` + `createRenderer(format)`. Only `gif` implemented; extend `PetFormat` + `createRenderer` for new backends.
-- Import/delete are Rust commands: validate id/format/states/media/capabilities, reject preset id clash, copy into app data. Frontend confirms overwrite of an existing user id first.
-- Plugins `tauri-plugin-fs` + `tauri-plugin-dialog`; capabilities need `fs:default` + `dialog:default`.
 
 ### Persistence / settings
 
 - Store persisted via `@tauri-store/pinia` (`saveOnChange`) + `tauri-plugin-pinia`, auto-synced across windows. **Every persisted field MUST be in the initial `state()`** (use `null` for optional) — a key assigned later never enters `$state`, so it is never saved. Catalog lists are **not** persisted.
 - Both windows call `petStore.$tauri.start()` in `App.vue` `onMounted` (guard with `__TAURI_INTERNALS__` for `pnpm dev`); main re-awaits it before the first `resizeWindow()`.
 - Window side-effects run only in **main**: `alwaysOnTop`/`passThrough` watchers, `scale` resize, `currentPetId` reload, position capture (poll `outerPosition`/`outerSize` + save on close-requested; macOS NSPanel has **no `onMoved`**). Do NOT run these in the preference window.
-- `resizeWindow()`: coalesced single-flight; size from current pet `width`/`height`; keep the geometric **center** in JS module state; every resize pins `setPosition(center − target/2)`; restore saved `x/y` once, guarded by an on-screen check. Needs `core:window:allow-outer-position` / `allow-outer-size`.
+
+### Env / build
+
+- Dev base URL `VITE_SHOP_API_BASE` default `http://localhost:8080` (`.env.development`); override in gitignored `.env.development.local`. `petShop.ts` falls back to mock **only** in `import.meta.env.DEV`.
+- Committed `.env.production` is a placeholder; the real value must come from `.env.production.local` (CI injects the `SHOP_API_BASE` secret; locally `SHOP_API_BASE=… pnpm prepare:env`). Never point prod builds at the placeholder.
+- `pnpm sync:version` rewrites 3 tracked files — expected; revert with `git checkout -- package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml`.
 
 ### Window / input
 
-- Drag uses **`appWindow.startDragging()`** after a move threshold — not custom `setPosition`.
 - Idle timer is **paused while dragging**: `setDragActive(true)` at drag threshold (clears timer), `false` on mouseup/dragEnd; `wake()` clears the flag so a swallowed mouseup (macOS) recovers on the next click/enter.
 - Keep `mousedown` `preventDefault` and global `user-select: none` to suppress selection chrome.
 - Window labels `"main"` / `"preference"`; macOS NSPanel conversion applies **only** to `main`.
