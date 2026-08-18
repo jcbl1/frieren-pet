@@ -14,7 +14,7 @@
 
 ```bash
 git clone <repo> && cd <repo>
-nvm use 22
+nvm use
 corepack enable
 pnpm install --frozen-lockfile
 pnpm tauri dev        # 桌宠主窗口
