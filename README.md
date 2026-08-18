@@ -18,30 +18,7 @@ nvm use
 corepack enable
 pnpm install --frozen-lockfile
 pnpm tauri dev        # 桌宠主窗口
-pnpm dev              # 仅前端 Vite（无 Tauri API / 窗口）
 ```
-
-验证环境：`pnpm check`。
-
-## 本地构建 Release 产物
-
-首次构建前准备本地 production 配置：
-
-```bash
-pnpm install --frozen-lockfile
-```
-
-将 `.env.production` 复制为 `.env.production.local`，再填写正确的
-`VITE_SHOP_API_BASE`、`TAURI_SIGNING_PRIVATE_KEY`，以及可选的
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。
-
-之后只需执行一条命令：
-
-```bash
-pnpm release:build v1.2.3
-```
-
-预发布版本也支持，例如 `pnpm release:build v1.2.3-rc.1`。该命令会自动执行检查、版本同步、生产环境注入和 `pnpm tauri build`，并在结束后恢复版本文件。它构建当前宿主平台；完整跨平台 release 仍由 GitHub Actions 完成。
 
 ## 文档
 
