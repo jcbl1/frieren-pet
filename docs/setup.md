@@ -60,8 +60,10 @@ pnpm dev            # 仅前端 Vite（无 Tauri API / 窗口）
 
 ```bash
 pnpm build          # 仅生成 dist/
-pnpm build:tauri    # 生成前端并打包当前宿主平台
+pnpm tauri build    # 生成前端并打包当前宿主平台
 ```
+
+需要复现 release workflow 的本地构建时，使用 [README 的 Release 构建流程](../README.md#本地构建-release-产物)，不要手动分别执行版本同步和环境注入命令。
 
 shop 后端不可达时自动回落 mock（`src/services/petShop.ts`），无需后端即可启动。
 联调 shop 时改 gitignored 的 `.env.development.local` 里的 `VITE_SHOP_API_BASE`
