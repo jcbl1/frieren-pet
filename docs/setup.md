@@ -13,7 +13,7 @@
 ## 1. 克隆并准备工具链
 
 ```bash
-git clone <repo> && cd <repo>
+git clone https://github.com/jcbl1/frieren-pet.git && cd frieren-pet
 nvm install 22 && nvm use
 corepack enable
 rustup install stable
@@ -44,9 +44,10 @@ pnpm install --frozen-lockfile
 ## 4. 验证环境
 
 ```bash
-pnpm typecheck
-cargo check -p frieren-pet
+pnpm check
 ```
+
+`pnpm check` 会依次执行前端类型检查和 `cargo check -p frieren-pet`。
 
 ## 5. 运行
 
@@ -54,6 +55,15 @@ cargo check -p frieren-pet
 pnpm tauri dev      # 全栈：Tauri 窗口 + 桌宠
 pnpm dev            # 仅前端 Vite（无 Tauri API / 窗口）
 ```
+
+前端构建和桌面应用构建：
+
+```bash
+pnpm build          # 仅生成 dist/
+pnpm tauri build    # 生成前端并打包当前宿主平台
+```
+
+需要复现 release workflow 的本地构建时，使用 [README 的 Release 构建流程](../README.md#本地构建-release-产物)，不要手动分别执行版本同步和环境注入命令。
 
 shop 后端不可达时自动回落 mock（`src/services/petShop.ts`），无需后端即可启动。
 联调 shop 时改 gitignored 的 `.env.development.local` 里的 `VITE_SHOP_API_BASE`

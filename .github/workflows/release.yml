@@ -51,6 +51,12 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Typecheck frontend
+        run: pnpm typecheck
+
+      - name: Check Rust
+        run: cargo check -p frieren-pet
+
       - name: Sync version from tag
         run: node scripts/sync-version.mjs "${{ github.ref_name }}"
 
@@ -86,7 +92,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'Frieren Pet v__VERSION__'
-          releaseDraft: true
-          prerelease: false
+          releaseDraft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generateReleaseNotes: true
           args: ${{ matrix.args }}
