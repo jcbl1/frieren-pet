@@ -13,15 +13,12 @@
 需要 Node 22 + pnpm 9 + Rust stable（完整流程见 [docs/setup.md](docs/setup.md)）：
 
 ```bash
-git clone <repo> && cd <repo>
-nvm use 22
+git clone https://github.com/jcbl1/frieren-pet.git && cd frieren-pet
+nvm use
 corepack enable
 pnpm install --frozen-lockfile
 pnpm tauri dev        # 桌宠主窗口
-pnpm dev              # 仅前端 Vite（无 Tauri API / 窗口）
 ```
-
-验证环境：`pnpm typecheck`、`cargo check -p frieren-pet`。构建：`pnpm tauri build`。
 
 ## 文档
 

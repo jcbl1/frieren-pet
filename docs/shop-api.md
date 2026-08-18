@@ -27,7 +27,7 @@
 |------|------|------|
 | dev（`pnpm tauri dev`） | `.env.development` | `VITE_SHOP_API_BASE=http://localhost:8080` |
 | dev 覆盖 | `.env.development.local`（gitignored） | 联调其它后端时改这里 |
-| prod（`pnpm tauri build`） | `.env.production.local` | CI 从 `SHOP_API_BASE` secret 注入；本地用 `SHOP_API_BASE=… pnpm prepare:env` 生成 |
+| prod（`pnpm tauri build`） | `.env.production.local` | 使用 `VITE_SHOP_API_BASE`；CI 将 `SHOP_API_BASE` secret 写入该变量 |
 
 提交的 `.env.production` 只是占位符（`https://shop.example.com`），真实地址必须走 `.env.production.local`。
 `import.meta.env.DEV` 由 Vite 构建模式驱动：dev = `vite`，prod = `vite build`。
@@ -185,7 +185,7 @@ fern.zip
 - 提供 `items[].previewUrl` / `items[].downloadUrl` 可匿名访问的 HTTPS 直链
 - zip 按「角色包规范」打包
 - dev 起本地服务（默认 `localhost:8000`）；prod 在反代层将 `/catalog`、`/notices` 与 zip 直链转发到后端，无需配 CORS
-- 配置 `VITE_SHOP_API_BASE`（dev 改 `.env.development.local`；prod 走 `SHOP_API_BASE=… pnpm prepare:env`）
+- 配置 `VITE_SHOP_API_BASE`（dev 改 `.env.development.local`；prod 改 `.env.production.local`，release 构建使用 `pnpm release:build`）
   → `pnpm tauri dev` → 商店 Tab 显示真实清单 → 安装验证
 
 ## 后续可扩展（当前未实现）

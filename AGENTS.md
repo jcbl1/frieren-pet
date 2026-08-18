@@ -20,6 +20,7 @@ SHOP_API_BASE=<url> pnpm prepare:env  # writes gitignored .env.production.local;
 
 - Package manager is **pnpm**. No test suite / ESLint / Prettier.
 - Vite: port **1420**, `strictPort: true`, ignores `src-tauri/**`.
+- Before expensive commands, inspect available CPU/memory and adjust Cargo parallelism.
 
 ## Layout
 
