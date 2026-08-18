@@ -44,15 +44,23 @@ pnpm install --frozen-lockfile
 ## 4. 验证环境
 
 ```bash
-pnpm typecheck
-cargo check -p frieren-pet
+pnpm check
 ```
+
+`pnpm check` 会依次执行前端类型检查和 `cargo check -p frieren-pet`。
 
 ## 5. 运行
 
 ```bash
 pnpm tauri dev      # 全栈：Tauri 窗口 + 桌宠
 pnpm dev            # 仅前端 Vite（无 Tauri API / 窗口）
+```
+
+前端构建和桌面应用构建：
+
+```bash
+pnpm build          # 仅生成 dist/
+pnpm build:tauri    # 生成前端并打包当前宿主平台
 ```
 
 shop 后端不可达时自动回落 mock（`src/services/petShop.ts`），无需后端即可启动。

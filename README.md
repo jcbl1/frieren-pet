@@ -21,7 +21,7 @@ pnpm tauri dev        # 桌宠主窗口
 pnpm dev              # 仅前端 Vite（无 Tauri API / 窗口）
 ```
 
-验证环境：`pnpm typecheck`、`cargo check -p frieren-pet`。构建：`pnpm tauri build`。
+验证环境：`pnpm check`。前端构建：`pnpm build`；桌面应用构建：`pnpm build:tauri`。
 
 ## 文档
 

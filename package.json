@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:tauri": "pnpm tauri build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
+    "check": "pnpm typecheck && cargo check -p frieren-pet",
     "tauri": "tauri",
     "sync:version": "node scripts/sync-version.mjs",
     "prepare:env": "node scripts/prepare-env.mjs"
