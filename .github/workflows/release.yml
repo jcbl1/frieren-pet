@@ -30,8 +30,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -56,10 +54,35 @@ jobs:
       - name: Sync version from tag
         run: node scripts/sync-version.mjs "${{ github.ref_name }}"
 
+      - name: Inject shop API base URL
+        shell: bash
+        env:
+          SHOP_API_BASE: ${{ secrets.SHOP_API_BASE }}
+        run: |
+          if [ -z "$SHOP_API_BASE" ]; then
+            echo "::error::Secret SHOP_API_BASE is not set; add it in repo Settings > Secrets to enable the shop backend."
+            exit 1
+          fi
+          echo "VITE_SHOP_API_BASE=$SHOP_API_BASE" > .env.production.local
+
+      - name: Validate updater signing key
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set; add it in repo Settings > Secrets"
+            exit 1
+          fi
+          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | python3 -c 'import base64,sys; base64.b64decode(sys.stdin.buffer.read(), validate=True)' \
+            || { echo "::error::TAURI_SIGNING_PRIVATE_KEY is not valid base64; re-set it with: gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/frieren-pet.key"; exit 1; }
+
       - name: Build and publish
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
         with:
           tagName: v__VERSION__
           releaseName: 'Frieren Pet v__VERSION__'

@@ -23,6 +23,7 @@ export interface PetConfig {
   width: number
   height: number
   defaultState: string
+  version?: string
   preview?: string
   model?: string
   motions?: Record<string, string[]>
