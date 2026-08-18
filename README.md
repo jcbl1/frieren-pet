@@ -13,7 +13,7 @@
 需要 Node 22 + pnpm 9 + Rust stable（完整流程见 [docs/setup.md](docs/setup.md)）：
 
 ```bash
-git clone <repo> && cd <repo>
+git clone https://github.com/jcbl1/frieren-pet.git && cd frieren-pet
 nvm use
 corepack enable
 pnpm install --frozen-lockfile

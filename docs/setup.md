@@ -13,7 +13,7 @@
 ## 1. 克隆并准备工具链
 
 ```bash
-git clone <repo> && cd <repo>
+git clone https://github.com/jcbl1/frieren-pet.git && cd frieren-pet
 nvm install 22 && nvm use
 corepack enable
 rustup install stable
