@@ -66,8 +66,30 @@ export function validatePetConfig(raw: Partial<PetConfig>, rootDir: string, expe
     }
   }
 
-  if (!Number.isFinite(config.width) || config.width <= 0 || !Number.isFinite(config.height) || config.height <= 0) {
+  const hasWidth = config.width != null
+  const hasHeight = config.height != null
+
+  if (hasWidth !== hasHeight) {
+    throw new Error(`pet "${config.id}": width 和 height 必须同时提供`)
+  }
+
+  if (config.ratio != null && (!Number.isFinite(config.ratio) || config.ratio <= 0)) {
+    throw new Error(`pet "${config.id}": ratio 必须大于 0`)
+  }
+
+  if (config.ratio == null && (!hasWidth || !hasHeight)) {
+    throw new Error(`pet "${config.id}": 必须提供 ratio，或同时提供 width/height`)
+  }
+
+  if (
+    config.ratio == null &&
+    (!Number.isFinite(config.width) || config.width! <= 0 || !Number.isFinite(config.height) || config.height! <= 0)
+  ) {
     throw new Error(`pet "${config.id}": width/height 必须大于 0`)
+  }
+
+  if (config.scale != null && (!Number.isFinite(config.scale) || config.scale <= 0)) {
+    throw new Error(`pet "${config.id}": scale 必须大于 0`)
   }
 
   if (!config.states || Object.keys(config.states).length === 0) {

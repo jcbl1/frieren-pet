@@ -20,8 +20,10 @@ export interface PetConfig {
   name: string
   format: PetFormat
   resourceDir: string
-  width: number
-  height: number
+  width?: number
+  height?: number
+  ratio?: number
+  scale?: number
   defaultState: string
   version?: string
   preview?: string

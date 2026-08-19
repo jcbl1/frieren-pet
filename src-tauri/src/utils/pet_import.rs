@@ -75,8 +75,14 @@ struct PetConfigRaw {
     id: String,
     name: String,
     format: String,
-    width: f64,
-    height: f64,
+    #[serde(default)]
+    width: Option<f64>,
+    #[serde(default)]
+    height: Option<f64>,
+    #[serde(default)]
+    ratio: Option<f64>,
+    #[serde(default)]
+    scale: Option<f64>,
     default_state: String,
     #[serde(default)]
     preview: Option<String>,
@@ -184,8 +190,28 @@ fn validate_pet_config(config: &PetConfigRaw, from_dir: &Path) -> Result<(), Str
         ));
     }
 
-    if config.width <= 0.0 || config.height <= 0.0 {
-        return Err("width/height 必须大于 0".into());
+    if config.width.is_some() != config.height.is_some() {
+        return Err("width 和 height 必须同时提供".into());
+    }
+
+    if let Some(ratio) = config.ratio {
+        if !ratio.is_finite() || ratio <= 0.0 {
+            return Err("ratio 必须大于 0".into());
+        }
+    } else {
+        let (Some(width), Some(height)) = (config.width, config.height) else {
+            return Err("必须提供 ratio，或同时提供 width/height".into());
+        };
+
+        if !width.is_finite() || width <= 0.0 || !height.is_finite() || height <= 0.0 {
+            return Err("width/height 必须大于 0".into());
+        }
+    }
+
+    if let Some(scale) = config.scale {
+        if !scale.is_finite() || scale <= 0.0 {
+            return Err("scale 必须大于 0".into());
+        }
     }
 
     if config.states.is_empty() {
@@ -401,8 +427,43 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
+            default_state: "sleep".into(),
+            preview: None,
+            model: None,
+            motions: HashMap::new(),
+            version: None,
+            capabilities: HashMap::new(),
+            states: HashMap::from([(
+                "sleep".into(),
+                PetStateConfigRaw {
+                    src: "sleep.gif".into(),
+                    r#loop: true,
+                    duration_ms: None,
+                    next: None,
+                },
+            )]),
+        };
+
+        assert!(validate_pet_config(&config, &from_dir).is_ok());
+    }
+
+    #[test]
+    fn validation_accepts_ratio_without_dimensions() {
+        let from_dir = tempfile_dir();
+        fs::write(from_dir.join("sleep.gif"), b"gif").unwrap();
+
+        let config = PetConfigRaw {
+            id: "ratio-pet".into(),
+            name: "Ratio Pet".into(),
+            format: "gif".into(),
+            width: None,
+            height: None,
+            ratio: Some(1.25),
+            scale: Some(1.5),
             default_state: "sleep".into(),
             preview: None,
             model: None,
@@ -432,8 +493,10 @@ mod tests {
             id: "bigpet".into(),
             name: "Big Pet".into(),
             format: "gif".into(),
-            width: 20_000_000_000.0,
-            height: 20_000_000_000.0,
+            width: Some(20_000_000_000.0),
+            height: Some(20_000_000_000.0),
+            ratio: None,
+            scale: None,
             default_state: "sleep".into(),
             preview: None,
             model: None,
@@ -463,8 +526,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "idle".into(),
             preview: None,
             model: None,
@@ -495,8 +560,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "sleep".into(),
             preview: None,
             model: None,
@@ -528,8 +595,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "sleep".into(),
             preview: None,
             model: None,
@@ -561,8 +630,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "sleep".into(),
             preview: None,
             model: None,
@@ -599,8 +670,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "sleep".into(),
             preview: None,
             model: None,
@@ -636,8 +709,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "sleep".into(),
             preview: None,
             model: None,
@@ -689,8 +764,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "live2d".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "idle".into(),
             preview: Some("preview.png".into()),
             model: Some("model.model3.json".into()),
@@ -740,8 +817,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "live2d".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "idle".into(),
             preview: Some("preview.png".into()),
             model: Some("model.model3.json".into()),
@@ -785,8 +864,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "live2d".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "idle".into(),
             preview: Some("preview.png".into()),
             model: None,
@@ -827,8 +908,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "live2d".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "idle".into(),
             preview: Some("preview.png".into()),
             model: Some("model.model3.json".into()),
@@ -868,8 +951,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "live2d".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "idle".into(),
             preview: None,
             model: Some("model.model3.json".into()),
@@ -901,8 +986,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "live2d".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "idle".into(),
             preview: Some("preview.png".into()),
             model: Some("model.model3.json".into()),
@@ -931,8 +1018,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "sleep".into(),
             preview: None,
             model: None,
@@ -968,8 +1057,10 @@ mod tests {
             id: "newpet".into(),
             name: "New Pet".into(),
             format: "gif".into(),
-            width: 100.0,
-            height: 100.0,
+            width: Some(100.0),
+            height: Some(100.0),
+            ratio: None,
+            scale: None,
             default_state: "sleep".into(),
             preview: None,
             model: None,

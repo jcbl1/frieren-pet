@@ -284,11 +284,11 @@ async function isPositionOnScreen(x: number, y: number) {
 
 async function resolveTargetSize(config: PetConfig) {
   const petStore = usePetStore()
-  const scale = petStore.scale / 100
+  const scale = (petStore.scale / 100) * (config.scale ?? 1)
   const monitor = await currentMonitor()
   const shortEdge = monitor ? Math.min(monitor.size.width, monitor.size.height) : 0
   const base = shortEdge > 0 ? shortEdge * BASE_SCREEN_RATIO : FALLBACK_DIM
-  const aspect = config.height > 0 ? config.width / config.height : 1
+  const aspect = config.ratio ?? config.width! / config.height!
   const maxW = monitor?.size.width ?? Number.POSITIVE_INFINITY
   const maxH = monitor?.size.height ?? Number.POSITIVE_INFINITY
 
