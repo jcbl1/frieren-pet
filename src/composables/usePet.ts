@@ -92,11 +92,23 @@ async function setState(state: PetState) {
   const config = await ensurePetConfig()
   const stateConfig = config.states[state]
 
-  if (!stateConfig) return
+  if (!stateConfig) {
+    logger.debug('state unavailable', { petId: config.id, state })
+
+    return
+  }
 
   currentState.value = state
 
   const src = config.format === 'live2d' ? config.model : stateConfig.src
+
+  logger.debug('state resolved', {
+    petId: config.id,
+    format: config.format,
+    state,
+    src,
+    group: config.format === 'live2d' ? stateConfig.src : undefined,
+  })
 
   currentSrc.value = src ? await resolveStateSrc(src) : ''
 
@@ -144,11 +156,23 @@ export async function invoke(cap: string) {
   const config = await ensurePetConfig()
   const target = config.capabilities?.[cap]
 
-  if (!target) return
+  logger.debug('capability invoked', { petId: config.id, capability: cap })
+
+  if (!target) {
+    logger.debug('capability has no mapping', { petId: config.id, capability: cap })
+
+    return
+  }
 
   const state = typeof target === 'string' ? target : target.state
 
-  if (!config.states[state]) return
+  if (!config.states[state]) {
+    logger.warn('capability targets missing state', { petId: config.id, capability: cap, state })
+
+    return
+  }
+
+  logger.debug('capability resolved', { petId: config.id, capability: cap, state })
 
   if (typeof target === 'object' && target.cooldownMs) {
     const until = capabilityCooldowns.get(cap)

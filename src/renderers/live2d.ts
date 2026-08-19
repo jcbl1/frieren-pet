@@ -4,12 +4,14 @@ import { readTextFile } from '@tauri-apps/plugin-fs'
 import { Config, CubismSetting, Live2DSprite, Priority } from 'easy-live2d'
 import { Application, Ticker } from 'pixi.js'
 
+import { createLogger } from '@/services/logger'
 import type { PetConfig, PetFormat, PetStateConfig } from '@/types/pet'
 
 import type { PetRenderer } from './types'
 
 Config.MouseFollow = false
 Config.MotionSound = false
+const logger = createLogger('live2d')
 
 function syncJoin(...paths: string[]) {
   const separator = sep()
@@ -55,6 +57,13 @@ export class Live2DRenderer implements PetRenderer {
   applyState(state: string, stateConfig: PetStateConfig, _mediaUrl: string, petConfig: PetConfig) {
     const modelKey = petConfig.model ? `${petConfig.resourceDir}/${petConfig.model}` : ''
 
+    logger.debug('state requested', {
+      petId: petConfig.id,
+      state,
+      group: stateConfig.src,
+      model: petConfig.model,
+    })
+
     if (modelKey !== this.loadedModelKey) {
       this.resetModel()
       this.loadedModelKey = modelKey
@@ -63,11 +72,19 @@ export class Live2DRenderer implements PetRenderer {
     this.config = petConfig
     this.pendingState = state
 
-    this.ensureLoaded().then(() => {
-      if (this.pendingState !== state) return
+    this.ensureLoaded()
+      .then(async () => {
+        if (this.pendingState !== state) {
+          logger.debug('state request superseded', { state, pendingState: this.pendingState })
 
-      this.playGroup(stateConfig.src)
-    })
+          return
+        }
+
+        await this.playGroup(stateConfig.src, state)
+      })
+      .catch((error) => {
+        logger.error('state playback failed', { state, group: stateConfig.src, error })
+      })
   }
 
   destroy() {
@@ -103,7 +120,7 @@ export class Live2DRenderer implements PetRenderer {
     if (this.loadPromise) return this.loadPromise
 
     this.loadPromise = this.load().catch((error) => {
-      console.error('[frieren-pet] live2d load failed:', error)
+      logger.error('model load failed', error)
       this.loadPromise = null
 
       throw error
@@ -118,10 +135,22 @@ export class Live2DRenderer implements PetRenderer {
     if (!config?.model || !this.host) return
 
     const modelPath = await join(config.resourceDir, config.model)
+    logger.debug('loading model', { petId: config.id, modelPath })
+
     const raw = await readTextFile(modelPath)
     const modelJson = JSON.parse(raw) as ModelJson
 
+    logger.debug('model motions before injection', {
+      groups: Object.keys(modelJson.FileReferences?.Motions ?? {}),
+    })
+
     this.injectMotions(modelJson)
+
+    logger.debug('model motions after injection', {
+      groups: Object.fromEntries(
+        Object.entries(modelJson.FileReferences?.Motions ?? {}).map(([group, motions]) => [group, motions.length]),
+      ),
+    })
 
     const setting = new CubismSetting({ modelJSON: modelJson })
 
@@ -153,6 +182,13 @@ export class Live2DRenderer implements PetRenderer {
     this.modelWidth = sprite.width
     this.modelHeight = sprite.height
 
+    logger.info('model ready', {
+      petId: config.id,
+      modelWidth: this.modelWidth,
+      modelHeight: this.modelHeight,
+      motions: sprite.getMotions(),
+    })
+
     this.fitModel()
 
     this.resizeObserver = new ResizeObserver(() => this.fitModel())
@@ -163,6 +199,8 @@ export class Live2DRenderer implements PetRenderer {
     const motions = this.config?.motions
 
     if (!motions || Object.keys(motions).length === 0) return
+
+    logger.debug('injecting configured motions', { groups: Object.keys(motions) })
 
     const registered: Record<string, unknown[]> = modelJson.FileReferences?.Motions ?? {}
 
@@ -179,14 +217,38 @@ export class Live2DRenderer implements PetRenderer {
     modelJson.FileReferences.Motions = registered
   }
 
-  private playGroup(group: string) {
+  private async playGroup(group: string, state: string) {
     const sprite = this.sprite
 
-    if (!sprite) return
+    if (!sprite) {
+      logger.warn('cannot play motion without sprite', { state, group })
+
+      return
+    }
 
     const priority = group === Config.MotionGroupIdle ? Priority.Idle : Priority.Force
+    const motions = sprite.getMotions().filter((motion) => motion.group === group)
 
-    void sprite.startRandomMotion({ group, priority })
+    logger.debug('playing motion group', {
+      state,
+      group,
+      priority,
+      availableMotions: motions,
+    })
+
+    if (motions.length === 0) {
+      logger.warn('motion group unavailable', { state, group })
+
+      return
+    }
+
+    const handle = await sprite.startRandomMotion({ group, priority })
+
+    logger.debug('motion request completed', { state, group, priority, handle })
+
+    if (handle === -1) {
+      logger.warn('motion request returned invalid handle', { state, group, priority })
+    }
   }
 
   private fitModel() {
