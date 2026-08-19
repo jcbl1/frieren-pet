@@ -3,11 +3,13 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 
 import { deletePet, importPet, loadPetCatalog } from '@/services/petCatalog'
+import { createLogger } from '@/services/logger'
 import type { PetEntry } from '@/services/petCatalog'
 import { readPetIdFromDir } from '@/services/petConfig'
 import { usePetStore } from '@/stores/pet'
 
 const petStore = usePetStore()
+const logger = createLogger('pets-tab')
 
 const pets = ref<PetEntry[]>([])
 const petLoading = ref(true)
@@ -19,7 +21,7 @@ onMounted(async () => {
   try {
     pets.value = await loadPetCatalog()
   } catch (error) {
-    console.error('[frieren-pet] load pet catalog failed:', error)
+    logger.error('load pet catalog failed', error)
   }
 
   petLoading.value = false

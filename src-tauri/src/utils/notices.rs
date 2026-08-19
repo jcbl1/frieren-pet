@@ -32,6 +32,8 @@ pub struct NoticesResponse {
 
 #[tauri::command]
 pub async fn fetch_notices(base_url: String) -> Result<NoticesResponse, String> {
+    log::debug!("fetch notices: {base_url}");
+
     let url = format!("{}/notices", base_url.trim_end_matches('/'));
 
     let response = reqwest::get(&url)

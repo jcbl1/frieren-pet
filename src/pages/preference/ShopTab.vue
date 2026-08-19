@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { loadPetCatalog } from '@/services/petCatalog'
+import { createLogger } from '@/services/logger'
 import type { PetEntry } from '@/services/petCatalog'
 import { formatSize, installShopPet, loadShopCatalog } from '@/services/petShop'
 import type { ShopItem } from '@/services/petShop'
@@ -10,6 +11,7 @@ import { isVersionNewer } from '@/utils/version'
 const items = ref<ShopItem[]>([])
 const installedVersions = ref(new Map<string, string | undefined>())
 const installingId = ref<string | null>(null)
+const logger = createLogger('shop-tab')
 const loading = ref(true)
 const status = ref<{ message: string; isError: boolean } | null>(null)
 
@@ -21,7 +23,7 @@ async function loadInstalledIds() {
   try {
     pets = await loadPetCatalog()
   } catch (error) {
-    console.error('[frieren-pet] shop: load local catalog failed:', error)
+    logger.error('load local catalog failed', error)
 
     return
   }

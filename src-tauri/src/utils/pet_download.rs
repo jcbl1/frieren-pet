@@ -38,6 +38,8 @@ fn catalog_url(base_url: &str) -> String {
 
 #[tauri::command]
 pub async fn fetch_shop_catalog(base_url: String) -> Result<ShopCatalog, String> {
+    log::debug!("fetch shop catalog: {base_url}");
+
     let response = reqwest::get(catalog_url(&base_url))
         .await
         .map_err(|err| format!("请求商店目录失败: {err}"))?;
@@ -123,6 +125,8 @@ fn temp_extract_dir() -> Result<(PathBuf, PathBuf), String> {
 
 #[tauri::command]
 pub async fn install_pet_from_url(app: AppHandle, url: String) -> Result<serde_json::Value, String> {
+    log::info!("install pet requested from URL: {url}");
+
     let response = reqwest::get(&url)
         .await
         .map_err(|err| format!("下载角色包失败: {err}"))?;
