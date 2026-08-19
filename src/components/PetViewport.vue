@@ -9,6 +9,7 @@ const props = defineProps<{
   config: PetConfig | null
   state: string
   src: string
+  revision: number
 }>()
 
 const hostRef = useTemplateRef<HTMLDivElement>('host')
@@ -47,7 +48,7 @@ function applyState() {
 onMounted(applyState)
 
 watch(
-  () => [props.config?.format, props.state, props.src] as const,
+  () => [props.config?.format, props.state, props.src, props.revision] as const,
   applyState,
 )
 

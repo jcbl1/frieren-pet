@@ -242,9 +242,19 @@ export class Live2DRenderer implements PetRenderer {
       return
     }
 
-    const handle = await sprite.startRandomMotion({ group, priority })
+    const handle = await sprite.startRandomMotion({
+      group,
+      priority,
+      onStarted: () => logger.debug('motion began', { state, group, priority }),
+      onFinished: () => logger.debug('motion finished', { state, group, priority }),
+    })
 
-    logger.debug('motion request completed', { state, group, priority, handle })
+    logger.debug('motion request completed', {
+      state,
+      group,
+      priority,
+      handle: { type: typeof handle, value: String(handle) },
+    })
 
     if (handle === -1) {
       logger.warn('motion request returned invalid handle', { state, group, priority })

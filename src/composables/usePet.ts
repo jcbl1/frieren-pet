@@ -23,6 +23,7 @@ let petConfigPromise: Promise<PetConfig> | null = null
 
 const currentState = ref<PetState>('')
 const currentSrc = ref<string>('')
+const stateRevision = ref(0)
 const petConfigRef = ref<PetConfig | null>(null)
 
 let idleTimer: ReturnType<typeof setTimeout> | undefined
@@ -98,6 +99,7 @@ async function setState(state: PetState) {
     return
   }
 
+  stateRevision.value += 1
   currentState.value = state
 
   const src = config.format === 'live2d' ? config.model : stateConfig.src
@@ -472,6 +474,7 @@ export function usePet() {
     config: computed(() => petConfigRef.value),
     currentState,
     currentSrc: computed(() => currentSrc.value),
+    stateRevision,
     start,
     reloadPet,
     invoke,
