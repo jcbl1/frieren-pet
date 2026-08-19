@@ -1,6 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
 
+import { createLogger } from '@/services/logger'
 import type { PetConfig } from '@/types/pet'
+
+const logger = createLogger('shop')
 
 export interface ShopItem {
   id: string
@@ -108,7 +111,7 @@ export async function loadShopCatalog(): Promise<ShopCatalog> {
       return await fetchCatalogFromServer()
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('[frieren-pet] shop: fetch catalog failed, fall back to mock:', error)
+        logger.warn('fetch catalog failed, fall back to mock', error)
       } else {
         throw error
       }

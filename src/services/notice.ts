@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 
+import { createLogger } from '@/services/logger'
 import { notify, isTauri } from '@/services/notification'
 import { SHOP_API_BASE } from '@/services/petShop'
 import { usePetStore } from '@/stores/pet'
@@ -10,6 +11,7 @@ export interface NoticesResponse {
 }
 
 const NOTICE_POLL_INTERVAL = import.meta.env.DEV ? 10_000 : 30 * 60 * 1000
+const logger = createLogger('notices')
 
 const MOCK_NOTICES: NoticeContent[] = [
   {
@@ -99,7 +101,7 @@ export async function fetchNotices(): Promise<NoticeContent[]> {
     return await fetchNoticesFromServer()
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.warn('[frieren-pet] notices: fetch failed, skip:', error)
+      logger.warn('fetch failed, skip', error)
 
       return []
     }
@@ -116,7 +118,7 @@ export async function pollAndPushNotices(): Promise<void> {
   try {
     items = await fetchNotices()
   } catch (error) {
-    console.error('[frieren-pet] notices: fetch failed:', error)
+    logger.error('fetch failed', error)
 
     return
   }

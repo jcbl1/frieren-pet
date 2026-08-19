@@ -126,6 +126,8 @@ fn pick_asset(assets: &[ReleaseAssetRaw]) -> Option<String> {
 
 #[tauri::command]
 pub async fn check_for_update(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
+    log::debug!("check for update requested");
+
     let current = app.package_info().version.to_string();
 
     let client = reqwest::Client::builder()

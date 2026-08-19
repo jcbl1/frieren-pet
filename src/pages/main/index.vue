@@ -12,11 +12,13 @@ import {
   wake,
 } from '@/composables/usePet'
 import PetViewport from '@/components/PetViewport.vue'
+import { createLogger } from '@/services/logger'
 import { usePetStore } from '@/stores/pet'
 
 const appWindow = getCurrentWebviewWindow()
 
 const petStore = usePetStore()
+const logger = createLogger('main')
 
 const { config, currentState, currentSrc } = usePet()
 
@@ -37,7 +39,7 @@ onMounted(async () => {
     await start()
     await resizeWindow()
   } catch (error) {
-    console.error('[frieren-pet] pet init failed:', error)
+    logger.error('pet init failed', error)
   }
 
   wake()

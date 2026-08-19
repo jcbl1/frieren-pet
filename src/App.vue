@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { attachConsole } from '@tauri-apps/plugin-log'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { onMounted, onBeforeUnmount } from 'vue'
@@ -12,6 +13,7 @@ import {
   scheduleNoticePolling,
 } from '@/services/notice'
 import { checkForUpdate, updateToNotice } from '@/services/updater'
+import { appLogger } from '@/services/logger'
 import { usePetStore } from '@/stores/pet'
 
 const appWindow = getCurrentWebviewWindow()
@@ -25,6 +27,7 @@ function isTauri() {
 let unlistenShop: (() => void) | undefined
 let unlistenTheme: (() => void) | undefined
 let stopNoticePolling: (() => void) | undefined
+let detachLogConsole: (() => void) | undefined
 
 onMounted(async () => {
   if (appWindow.label === 'preference') {
@@ -36,9 +39,15 @@ onMounted(async () => {
   if (!isTauri()) return
 
   try {
+    detachLogConsole = await attachConsole()
+  } catch (error) {
+    appLogger.warn('log console attach failed', error)
+  }
+
+  try {
     await petStore.$tauri.start()
   } catch (error) {
-    console.error('[frieren-pet] store sync start failed:', error)
+    appLogger.error('store sync start failed', error)
   }
 
   if (appWindow.label === 'preference') {
@@ -70,6 +79,7 @@ onBeforeUnmount(() => {
   unlistenShop?.()
   unlistenTheme?.()
   stopNoticePolling?.()
+  detachLogConsole?.()
 })
 </script>
 

@@ -5,6 +5,7 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { availableMonitors, currentMonitor } from '@tauri-apps/api/window'
 import { computed, ref, watch } from 'vue'
 
+import { createLogger } from '@/services/logger'
 import { loadPetConfigById, loadPresetPetConfig, loadPresetPetIds } from '@/services/petConfig'
 import { usePetStore } from '@/stores/pet'
 import type { PetConfig } from '@/types/pet'
@@ -16,6 +17,7 @@ const DEFAULT_PET_ID = 'frieren'
 const BASE_SCREEN_RATIO = 0.25
 const MIN_DIM = 32
 const FALLBACK_DIM = 512
+const logger = createLogger('pet')
 
 let petConfigPromise: Promise<PetConfig> | null = null
 
@@ -52,7 +54,7 @@ function ensurePetConfig(): Promise<PetConfig> {
   petConfigRef.value = null
   petConfigPromise = loadPetConfigById(id)
     .catch((error) => {
-      console.error(`[frieren-pet] load pet "${id}" failed:`, error)
+      logger.error(`load pet "${id}" failed`, error)
 
       return loadDefaultPetConfig()
     })
@@ -274,7 +276,7 @@ async function isPositionOnScreen(x: number, y: number) {
       )
     })
   } catch (error) {
-    console.error('[frieren-pet] monitor check failed:', error)
+    logger.error('monitor check failed', error)
 
     return true
   }
