@@ -20,7 +20,7 @@ const appWindow = getCurrentWebviewWindow()
 const petStore = usePetStore()
 const logger = createLogger('main')
 
-const { config, currentState, currentSrc } = usePet()
+const { config, currentState, currentSrc, stateRevision } = usePet()
 
 const DRAG_THRESHOLD = 4
 
@@ -147,7 +147,7 @@ function handleContextMenu(event: MouseEvent) {
     @mouseleave="handleMouseLeave"
     @contextmenu="handleContextMenu"
   >
-    <PetViewport :config="config" :state="currentState" :src="currentSrc" />
+    <PetViewport :config="config" :state="currentState" :src="currentSrc" :revision="stateRevision" />
   </div>
 </template>
 

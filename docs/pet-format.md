@@ -33,6 +33,7 @@ src-tauri/assets/pets/
   "format": "gif",
   "width": 736,
   "height": 736,
+  "scale": 1,
   "defaultState": "sleep",
   "version": "1.0.0",
   "preview": "fallback.png",
@@ -57,8 +58,10 @@ src-tauri/assets/pets/
 |------|------|
 | `id` | `/^[a-z0-9][a-z0-9_-]{0,63}$/i`；用户包不得与内置 id 冲突 |
 | `name` | 显示名 |
-| `format` | 渲染后端；当前仅 `"gif"`，未知格式拒绝加载 |
-| `width` / `height` | 角色基准尺寸（宽高比）；窗口尺寸 = 屏幕短边 × 25% × `scale/100` |
+| `format` | 渲染后端；当前支持 `"gif"` 和 `"live2d"`，未知格式拒绝加载 |
+| `ratio` | 可选的新格式窗口宽高比；存在时优先于 `width / height` |
+| `width` / `height` | 兼容旧格式的角色基准尺寸（宽高比）；必须同时提供。未提供 `ratio` 时使用 `width / height` |
+| `scale` | 可选的角色默认尺寸倍率，缺省为 `1`；窗口尺寸还会叠加用户设置的 `scale/100` |
 | `defaultState` | 启动 / 切换角色后的初始状态，必须 ∈ `states` |
 | `version` | 可选，角色版本号（如 `1.0.0`）。商店用它与 `catalog.items[].version` 对比，检测是否可更新；缺省视为旧版可更新 |
 | `preview` | 设置页缩略图（相对包根）；缺省用 `defaultState` 的 `src` |

@@ -1,8 +1,8 @@
-import type { PetFormat, PetStateConfig } from '@/types/pet'
+import type { PetConfig, PetFormat, PetStateConfig } from '@/types/pet'
 
 export interface PetRenderer {
   readonly format: PetFormat
-  mount(host: HTMLElement): void
-  applyState(state: string, config: PetStateConfig, mediaUrl: string): void
+  mount(host: HTMLElement, config: PetConfig): void
+  applyState(state: string, config: PetStateConfig, mediaUrl: string, petConfig: PetConfig): void
   destroy(): void
 }

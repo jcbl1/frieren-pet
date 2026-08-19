@@ -19,7 +19,8 @@ export interface PetEntry extends PetConfig {
 }
 
 async function resolvePreviewUrl(config: PetConfig) {
-  const src = config.preview ?? config.states[config.defaultState]?.src
+  const src =
+    config.preview ?? (config.format === 'live2d' ? undefined : config.states[config.defaultState]?.src)
 
   if (!src) return ''
 

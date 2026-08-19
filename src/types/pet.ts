@@ -1,4 +1,4 @@
-export type PetFormat = 'gif'
+export type PetFormat = 'gif' | 'live2d'
 
 export interface PetStateConfig {
   src: string
@@ -20,11 +20,15 @@ export interface PetConfig {
   name: string
   format: PetFormat
   resourceDir: string
-  width: number
-  height: number
+  width?: number
+  height?: number
+  ratio?: number
+  scale?: number
   defaultState: string
   version?: string
   preview?: string
+  model?: string
+  motions?: Record<string, string[]>
   capabilities?: PetCapabilities
   states: Record<string, PetStateConfig>
 }

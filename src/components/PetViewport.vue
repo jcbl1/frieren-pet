@@ -9,6 +9,7 @@ const props = defineProps<{
   config: PetConfig | null
   state: string
   src: string
+  revision: number
 }>()
 
 const hostRef = useTemplateRef<HTMLDivElement>('host')
@@ -25,8 +26,8 @@ function ensureRenderer() {
   renderer?.destroy()
   renderer = createRenderer(format)
 
-  if (hostRef.value) {
-    renderer.mount(hostRef.value)
+  if (hostRef.value && props.config) {
+    renderer.mount(hostRef.value, props.config)
   }
 
   return renderer
@@ -35,19 +36,19 @@ function ensureRenderer() {
 function applyState() {
   const renderer = ensureRenderer()
 
-  if (!renderer) return
+  if (!renderer || !props.config) return
 
-  const stateConfig = props.config?.states[props.state]
+  const stateConfig = props.config.states[props.state]
 
   if (!stateConfig) return
 
-  renderer.applyState(props.state, stateConfig, props.src)
+  renderer.applyState(props.state, stateConfig, props.src, props.config)
 }
 
 onMounted(applyState)
 
 watch(
-  () => [props.config?.format, props.state, props.src] as const,
+  () => [props.config?.format, props.state, props.src, props.revision] as const,
   applyState,
 )
 

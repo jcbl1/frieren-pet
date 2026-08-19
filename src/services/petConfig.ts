@@ -3,7 +3,7 @@ import { appDataDir, join, resolveResource } from '@tauri-apps/api/path'
 
 import type { PetConfig } from '@/types/pet'
 
-const SUPPORTED_FORMATS = new Set(['gif'])
+const SUPPORTED_FORMATS = new Set(['gif', 'live2d'])
 const USER_PETS_DIR = 'pets'
 
 export async function getUserPetsRoot(): Promise<string> {
@@ -50,8 +50,46 @@ export function validatePetConfig(raw: Partial<PetConfig>, rootDir: string, expe
     throw new Error(`pet "${config.id}": 不支持的格式 "${String(config.format)}"`)
   }
 
-  if (!Number.isFinite(config.width) || config.width <= 0 || !Number.isFinite(config.height) || config.height <= 0) {
+  if (config.format === 'live2d') {
+    if (!config.model?.trim()) {
+      throw new Error(`pet "${config.id}": live2d 格式缺少 model`)
+    }
+
+    if (config.motions != null && typeof config.motions !== 'object') {
+      throw new Error(`pet "${config.id}": motions 必须是一个对象`)
+    }
+
+    for (const [group, files] of Object.entries(config.motions ?? {})) {
+      if (!Array.isArray(files) || files.some((file) => !file?.trim())) {
+        throw new Error(`pet "${config.id}": motions[${group}] 必须是非空字符串数组`)
+      }
+    }
+  }
+
+  const hasWidth = config.width != null
+  const hasHeight = config.height != null
+
+  if (hasWidth !== hasHeight) {
+    throw new Error(`pet "${config.id}": width 和 height 必须同时提供`)
+  }
+
+  if (config.ratio != null && (!Number.isFinite(config.ratio) || config.ratio <= 0)) {
+    throw new Error(`pet "${config.id}": ratio 必须大于 0`)
+  }
+
+  if (config.ratio == null && (!hasWidth || !hasHeight)) {
+    throw new Error(`pet "${config.id}": 必须提供 ratio，或同时提供 width/height`)
+  }
+
+  if (
+    config.ratio == null &&
+    (!Number.isFinite(config.width) || config.width! <= 0 || !Number.isFinite(config.height) || config.height! <= 0)
+  ) {
     throw new Error(`pet "${config.id}": width/height 必须大于 0`)
+  }
+
+  if (config.scale != null && (!Number.isFinite(config.scale) || config.scale <= 0)) {
+    throw new Error(`pet "${config.id}": scale 必须大于 0`)
   }
 
   if (!config.states || Object.keys(config.states).length === 0) {

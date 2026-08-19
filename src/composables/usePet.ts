@@ -23,6 +23,7 @@ let petConfigPromise: Promise<PetConfig> | null = null
 
 const currentState = ref<PetState>('')
 const currentSrc = ref<string>('')
+const stateRevision = ref(0)
 const petConfigRef = ref<PetConfig | null>(null)
 
 let idleTimer: ReturnType<typeof setTimeout> | undefined
@@ -92,11 +93,26 @@ async function setState(state: PetState) {
   const config = await ensurePetConfig()
   const stateConfig = config.states[state]
 
-  if (!stateConfig) return
+  if (!stateConfig) {
+    logger.debug('state unavailable', { petId: config.id, state })
 
+    return
+  }
+
+  stateRevision.value += 1
   currentState.value = state
 
-  currentSrc.value = await resolveStateSrc(stateConfig.src)
+  const src = config.format === 'live2d' ? config.model : stateConfig.src
+
+  logger.debug('state resolved', {
+    petId: config.id,
+    format: config.format,
+    state,
+    src,
+    group: config.format === 'live2d' ? stateConfig.src : undefined,
+  })
+
+  currentSrc.value = src ? await resolveStateSrc(src) : ''
 
   await scheduleStateTransition(state)
 }
@@ -142,11 +158,23 @@ export async function invoke(cap: string) {
   const config = await ensurePetConfig()
   const target = config.capabilities?.[cap]
 
-  if (!target) return
+  logger.debug('capability invoked', { petId: config.id, capability: cap })
+
+  if (!target) {
+    logger.debug('capability has no mapping', { petId: config.id, capability: cap })
+
+    return
+  }
 
   const state = typeof target === 'string' ? target : target.state
 
-  if (!config.states[state]) return
+  if (!config.states[state]) {
+    logger.warn('capability targets missing state', { petId: config.id, capability: cap, state })
+
+    return
+  }
+
+  logger.debug('capability resolved', { petId: config.id, capability: cap, state })
 
   if (typeof target === 'object' && target.cooldownMs) {
     const until = capabilityCooldowns.get(cap)
@@ -284,11 +312,11 @@ async function isPositionOnScreen(x: number, y: number) {
 
 async function resolveTargetSize(config: PetConfig) {
   const petStore = usePetStore()
-  const scale = petStore.scale / 100
+  const scale = (petStore.scale / 100) * (config.scale ?? 1)
   const monitor = await currentMonitor()
   const shortEdge = monitor ? Math.min(monitor.size.width, monitor.size.height) : 0
   const base = shortEdge > 0 ? shortEdge * BASE_SCREEN_RATIO : FALLBACK_DIM
-  const aspect = config.height > 0 ? config.width / config.height : 1
+  const aspect = config.ratio ?? config.width! / config.height!
   const maxW = monitor?.size.width ?? Number.POSITIVE_INFINITY
   const maxH = monitor?.size.height ?? Number.POSITIVE_INFINITY
 
@@ -446,6 +474,7 @@ export function usePet() {
     config: computed(() => petConfigRef.value),
     currentState,
     currentSrc: computed(() => currentSrc.value),
+    stateRevision,
     start,
     reloadPet,
     invoke,
