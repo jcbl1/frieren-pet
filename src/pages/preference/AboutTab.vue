@@ -4,6 +4,7 @@ import { getName, getVersion } from '@tauri-apps/api/app'
 import { onMounted, ref } from 'vue'
 
 import { useNoticeModal } from '@/composables/useNoticeModal'
+import { createLogger } from '@/services/logger'
 import { enqueueNotices } from '@/services/notice'
 import { checkForUpdate, updateToNotice } from '@/services/updater'
 import { usePetStore } from '@/stores/pet'
@@ -13,6 +14,7 @@ const appVersion = ref('')
 
 const checking = ref(false)
 const checkMessage = ref('')
+const logger = createLogger('about')
 
 const petStore = usePetStore()
 const { open } = useNoticeModal()
@@ -31,7 +33,7 @@ onMounted(async () => {
     try {
       petStore.launchAtStartup = await isEnabled()
     } catch (error) {
-      console.error('[frieren-pet] autostart: read state failed:', error)
+    logger.error('autostart read state failed', error)
     }
   }
 })
@@ -50,7 +52,7 @@ async function toggleLaunchAtStartup() {
       await disableAutostart()
     }
   } catch (error) {
-    console.error('[frieren-pet] autostart: toggle failed:', error)
+    logger.error('autostart toggle failed', error)
 
     petStore.launchAtStartup = !next
   }
@@ -75,7 +77,7 @@ async function handleCheckUpdate() {
     }
   } catch (error) {
     checkMessage.value = `检查更新失败：${String(error)}`
-    console.error('[frieren-pet] check update failed:', error)
+    logger.error('check update failed', error)
   } finally {
     checking.value = false
   }

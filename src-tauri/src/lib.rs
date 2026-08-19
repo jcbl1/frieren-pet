@@ -2,6 +2,7 @@ mod setup;
 mod utils;
 
 use tauri::Manager;
+use tauri_plugin_log::{Target, TargetKind};
 
 use utils::notices::fetch_notices;
 use utils::pet_download::{fetch_shop_catalog, install_pet_from_url};
@@ -10,14 +11,22 @@ use utils::updater::check_for_update;
 
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
+    log::info!("quit_app command received");
     app.exit(0);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let log_level = if cfg!(debug_assertions) {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Info
+    };
+
     tauri::Builder::default()
         .setup(|app| {
             setup::default(app)?;
+            log::info!("application setup complete");
 
             #[cfg(desktop)]
             let _ = app.handle().plugin(tauri_plugin_autostart::init(
@@ -37,6 +46,19 @@ pub fn run() {
             fetch_notices
         ])
         .plugin(tauri_plugin_fs::init())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log_level)
+                .max_file_size(5_000_000)
+                .targets([
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::Webview),
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("frieren-pet.log".into()),
+                    }),
+                ])
+                .build(),
+        )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())

@@ -8,7 +8,10 @@ import {
   loadPresetPetIds,
   loadUserPetConfig,
 } from '@/services/petConfig'
+import { createLogger } from '@/services/logger'
 import type { PetConfig } from '@/types/pet'
+
+const logger = createLogger('catalog')
 
 export interface PetEntry extends PetConfig {
   isPreset: boolean
@@ -36,7 +39,7 @@ async function loadUserPets(): Promise<PetEntry[]> {
 
     dirs = listed.filter((entry) => entry.isDirectory).map((entry) => entry.name)
   } catch (error) {
-    console.error('[frieren-pet] catalog: cannot read user pets dir:', error)
+    logger.error('cannot read user pets dir', error)
 
     return entries
   }
@@ -50,7 +53,7 @@ async function loadUserPets(): Promise<PetEntry[]> {
 
       entries.push({ ...config, isPreset: false, previewUrl })
     } catch (error) {
-      console.error(`[frieren-pet] catalog: skip user pet "${name}":`, error)
+      logger.warn(`skip user pet "${name}"`, error)
     }
   }
 
@@ -68,7 +71,7 @@ export async function loadPetCatalog(): Promise<PetEntry[]> {
 
       entries.push({ ...config, isPreset: true, previewUrl })
     } catch (error) {
-      console.error(`[frieren-pet] catalog: skip preset "${id}":`, error)
+      logger.warn(`skip preset "${id}"`, error)
     }
   }
 

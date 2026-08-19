@@ -264,11 +264,15 @@ pub(crate) fn install_pet_from_dir(app: &AppHandle, from_dir: &Path) -> Result<s
 
 #[tauri::command]
 pub async fn import_pet(app: AppHandle, from_path: String) -> Result<serde_json::Value, String> {
+    log::info!("import pet requested: {from_path}");
+
     install_pet_from_dir(&app, Path::new(&from_path))
 }
 
 #[tauri::command]
 pub async fn delete_pet(app: AppHandle, id: String) -> Result<(), String> {
+    log::info!("delete pet requested: {id}");
+
     if !is_valid_pet_id(&id) {
         return Err("非法的角色 id".into());
     }

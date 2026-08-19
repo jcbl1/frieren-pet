@@ -59,6 +59,17 @@
 - 角色目录列表**不**持久化，启动 / 打开设置页时扫描
 - 公告相关（`pendingNotices` / `dismissedNoticeIds` / `notifiedNoticeIds`）为会话级状态，启动时清空
 
+## 日志
+
+日志由 `tauri-plugin-log` 统一处理。前端通过 `src/services/logger.ts` 写入，Tauri/Rust 通过 `log` crate 写入；浏览器开发模式下自动回退到 `console`。
+
+- 开发时：日志输出到 Tauri 终端和 WebView console
+- 持久化：写入应用日志目录，单文件上限 5 MB
+- Linux：`$XDG_DATA_HOME/{bundleIdentifier}/logs`，通常为 `~/.local/share/{bundleIdentifier}/logs`
+- macOS：`~/Library/Logs/{bundleIdentifier}`
+- Windows：`%LOCALAPPDATA%/{bundleIdentifier}/logs`
+- 渲染器、角色加载、导入、商店、更新和未捕获异常均通过统一日志记录；Live2D 分支可直接复用该 logger
+
 ## 窗口行为（main 窗）
 
 - **位置捕获**：400ms 轮询 `outerPosition` / `outerSize`，关窗（close-requested）时再存一次。

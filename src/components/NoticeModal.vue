@@ -2,10 +2,12 @@
 import { computed, ref } from 'vue'
 
 import { useNoticeModal } from '@/composables/useNoticeModal'
+import { createLogger } from '@/services/logger'
 import { installUpdate, openReleasePage } from '@/services/updater'
 import type { NoticeAction } from '@/types/update'
 
 const { visible, current, close } = useNoticeModal()
+const logger = createLogger('notice-modal')
 
 type DownloadState = 'idle' | 'downloading' | 'done' | 'error'
 
@@ -49,7 +51,7 @@ async function handleAction(action: NoticeAction) {
     } catch (error) {
       downloadState.value = 'error'
       downloadMessage.value = String(error)
-      console.error('[frieren-pet] install update failed:', error)
+      logger.error('install update failed', error)
     }
   }
 }
