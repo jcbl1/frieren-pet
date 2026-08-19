@@ -92,7 +92,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'Frieren Pet v__VERSION__'
-          releaseDraft: false
+          releaseDraft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           generateReleaseNotes: true
           args: ${{ matrix.args }}
